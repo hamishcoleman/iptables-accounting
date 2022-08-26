@@ -1,0 +1,57 @@
+---
+name: CI
+
+# yamllint disable-line rule:truthy
+on:
+  push:
+  pull_request:
+  schedule:
+    - cron: "0 0 22 * *"
+
+jobs:
+  build:
+    name: Build and test
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v2
+        with:
+          fetch-depth: 0
+      - name: Fix Checkout
+        run: |
+          git fetch --force --tags
+
+      - name: Run minimal test build
+        run: |
+          sudo apt-get update
+          make test
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v2
+        with:
+          name: cpio
+          path:
+            - iptables-accounting
+            - iptables-accounting-add
+
+  lint:
+    name: Code syntax
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v2
+        with:
+          fetch-depth: 0
+      - name: Fix Checkout
+        run: |
+          git fetch --force --tags
+
+      - name: Install Dependancies
+        run: |
+          sudo apt-get update
+
+      - name: Run the lint tools
+        run: |
+          make lint
+
+
