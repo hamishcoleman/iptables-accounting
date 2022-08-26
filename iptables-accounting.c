@@ -6,6 +6,9 @@
 #include <stdio.h>
 #include <getopt.h>
 #include <string.h>
+#include <sys/socket.h>
+#include <arpa/inet.h>
+#include <unistd.h>
 
 /* FIXME: globals */
 int service_port = 8088;
@@ -164,14 +167,74 @@ void output_prom(FILE *input, FILE *output) {
     }
 }
 
+void http_connection(int fd) {
+    char buf1[100];
+
+    FILE *reader = fdopen(fd, "r");
+    FILE *output = fdopen(fd, "w");
+
+    char *s = (char *)&buf1;
+    *s = 0;
+    if (fgets(s, sizeof(buf1), reader) == NULL) {
+        return;
+    }
+    if (strncmp("GET /metrics ",s,13) != 0) {
+        return;
+    }
+
+    s = (char *)&buf1;
+    while (fgets(s, sizeof(buf1), reader)) {
+        if (s[0]=='\r' && s[1]=='\n') {
+            // just the newline
+            break;
+        }
+    }
+
+    // TODO: cache the output
+
+    FILE *input = popen("/sbin/iptables-save -c -t raw", "r");
+
+    fprintf(output,"HTTP/1.0 200 OK\n\n");
+    output_prom(input, output);
+    fclose(input);
+    fclose(output);
+}
+
 void mode_service(int port) {
-    // create listening port service_port
-    // loop wsiting for connection
-    //  read http request headers
-    //  if we are happy, call service handler with fd
+    int server;
+    int client;
+    int on = 1;
+    struct sockaddr_in addr;
+
+    if ((server = socket(AF_INET, SOCK_STREAM, 0)) < 0) {
+        perror("socket");
+        exit(1);
+    }
+    setsockopt(server, SOL_SOCKET, SO_REUSEADDR, &on, sizeof(on));
+
+    memset(&addr, 0, sizeof(addr));
+    addr.sin_family = AF_INET;
+    addr.sin_addr.s_addr = htonl(INADDR_ANY);
+    addr.sin_port = htons(port);
+    if (bind(server, (struct sockaddr *) &addr, sizeof(addr)) < 0) {
+        perror("bind");
+        exit(1);
+    }
+
+    if (listen(server, 3) < 0) {
+        perror("listen");
+        exit(1);
+    }
+
+    while ((client = accept(server, NULL, 0))) {
+        http_connection(client);
+        close(client);
+    }
 }
 
 int main(int argc, char **argv) {
+    FILE *input;
+
     argparser(argc, argv);
 
     switch (mode) {
@@ -182,8 +245,8 @@ int main(int argc, char **argv) {
             output_prom(stdin, stdout);
             break;
         case MODE_DUMP:
-            // input = popen( "iptables-save -c -t raw" )
-            // output_prom( input, stdout )
+            input = popen("iptables-save -c -t raw", "r");
+            output_prom(input, stdout);
             break;
     }
 
