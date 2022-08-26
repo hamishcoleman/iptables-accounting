@@ -1,0 +1,10 @@
+# TYPE iptables_acct_packets_total counter
+# TYPE iptables_acct_bytes_total counter
+iptables_acct_packets_total{chain="PREROUTING",proto="tcp",port="22"} 500
+iptables_acct_bytes_total{chain="PREROUTING",proto="tcp",port="22"} 5000
+iptables_acct_packets_total{chain="PREROUTING",proto="udp",port="53"} 600
+iptables_acct_bytes_total{chain="PREROUTING",proto="udp",port="53"} 6000
+iptables_acct_packets_total{chain="OUTPUT",proto="tcp",port="22"} 700
+iptables_acct_bytes_total{chain="OUTPUT",proto="tcp",port="22"} 7000
+iptables_acct_packets_total{chain="OUTPUT",proto="udp",port="53"} 800
+iptables_acct_bytes_total{chain="OUTPUT",proto="udp",port="53"} 8000

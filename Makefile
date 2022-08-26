@@ -17,6 +17,6 @@ lint.ccode:
 test: test.units
 
 .PHONY: test.units
-test.units:
-	@echo TODO: write tests
-	@false
+test.units: iptables-accounting test.input test.expected
+	./iptables-accounting --test <test.input >test.output
+	cmp test.expected test.output
