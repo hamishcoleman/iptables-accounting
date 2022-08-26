@@ -1,0 +1,6 @@
+
+# vim swapfile
+.*.swp
+
+# generated outputs
+iptables-accounting
