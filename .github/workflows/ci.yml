@@ -51,5 +51,3 @@ jobs:
       - name: Run the lint tools
         run: |
           make lint
-
-

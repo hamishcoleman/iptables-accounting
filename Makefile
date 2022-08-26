@@ -9,8 +9,15 @@ CFLAGS+=-Wall -Werror
 LINT_CCODE+=iptables-accounting.c
 LINT_SHELL+=iptables-accounting-add
 
+BUILD_DEP+=uncrustify
+BUILD_DEP+=yamllint
+
+.PHONY: build-dep
+build-dep:
+	sudo apt-get -y install $(BUILD_DEP)
+
 .PHONY: lint
-lint: lint.ccode lint.shell
+lint: lint.ccode lint.shell lint.yaml
 
 .PHONY: lint.ccode
 lint.ccode:
@@ -19,6 +26,10 @@ lint.ccode:
 .PHONY: lint.shell
 lint.shell:
 	shellcheck ${LINT_SHELL}
+
+.PHONY: lint.yaml
+lint.yaml:
+	yamllint .
 
 .PHONY: test
 test: test.units
