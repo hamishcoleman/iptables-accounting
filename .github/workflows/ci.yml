@@ -23,7 +23,6 @@ jobs:
 
       - name: Run minimal test build
         run: |
-          sudo apt-get update
           make test
 
       - name: Upload artifact
@@ -47,6 +46,7 @@ jobs:
       - name: Install Dependancies
         run: |
           sudo apt-get update
+          make build-dep
 
       - name: Run the lint tools
         run: |
