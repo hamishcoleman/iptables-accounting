@@ -1,0 +1,37 @@
+#!/bin/sh
+#
+#
+
+if [ -z "$1" ]; then
+    echo "Usage: $0 [--flush] [--del] ports..."
+    exit 0
+fi
+
+if [ "$1" = "--flush" ]; then
+    iptables -t raw -F PREROUTING
+    iptables -t raw -F OUTPUT
+    shift
+fi
+
+OP=-A
+if [ "$1" = "--del" ]; then
+    OP=-D
+    shift
+fi
+
+while [ -n "$1" ]; do
+    PROTO=$(echo "$1" | cut -s -d/ -f2)
+    if [ -z "$PROTO" ]; then
+        PROTO=tcp
+    fi
+    PORT=$(echo "$1" | cut -d/ -f1)
+
+    iptables -t raw $OP PREROUTING \
+        -p "$PROTO" --dport "$PORT" \
+        -m comment --comment ACCT
+    iptables -t raw $OP OUTPUT \
+        -p "$PROTO" --sport "$PORT" \
+        -m comment --comment ACCT
+
+    shift
+done
