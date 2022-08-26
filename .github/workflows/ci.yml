@@ -29,10 +29,8 @@ jobs:
       - name: Upload artifact
         uses: actions/upload-artifact@v2
         with:
-          name: cpio
-          path:
-            - iptables-accounting
-            - iptables-accounting-add
+          name: iptables-accounting
+          path: iptables-accounting
 
   lint:
     name: Code syntax
