@@ -4,6 +4,8 @@
 
 all: iptables-accounting
 
+CFLAGS+=-Wall -Werror
+
 LINT_CCODE+=iptables-accounting.c
 LINT_SHELL+=iptables-accounting-add
 

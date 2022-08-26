@@ -29,7 +29,6 @@ void argparser(int argc, char **argv) {
     };
 
     while (1) {
-        int this_option_optind = optind ? optind : 1;
         int option_index = 0;
 
         int c = getopt_long(argc, argv, "p:tdh", long_options, &option_index);
