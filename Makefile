@@ -38,3 +38,7 @@ test: test.units
 test.units: iptables-accounting test.input test.expected
 	./iptables-accounting --test <test.input >test.output
 	cmp test.expected test.output
+
+.PHONY: clean
+clean:
+	rm -f iptables-accounting
