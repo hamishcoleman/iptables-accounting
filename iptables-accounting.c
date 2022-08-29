@@ -175,10 +175,10 @@ void http_connection(int fd) {
     char *s = (char *)&buf1;
     *s = 0;
     if (fgets(s, sizeof(buf1), reader) == NULL) {
-        return;
+        goto out1;
     }
     if (strncmp("GET /metrics ",s,13) != 0) {
-        return;
+        goto out1;
     }
 
     s = (char *)&buf1;
@@ -195,8 +195,11 @@ void http_connection(int fd) {
 
     fprintf(output,"HTTP/1.0 200 OK\n\n");
     output_prom(input, output);
+
     fclose(input);
+out1:
     fclose(output);
+    fclose(reader);
 }
 
 void mode_service(int port) {
