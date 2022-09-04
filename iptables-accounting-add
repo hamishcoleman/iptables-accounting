@@ -62,7 +62,7 @@ load_file() {
     fi
 
     while read -r line; do
-        line=$(echo "$line" | sed -e 's/#.*//')
+        line=${line##\#*}
 
         if [ -z "$line" ]; then
             continue
