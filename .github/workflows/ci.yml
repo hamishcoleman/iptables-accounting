@@ -23,7 +23,7 @@ jobs:
 
       - name: Run minimal test build
         run: |
-          make test
+          make CC=gcc-10 test
 
       - name: Upload artifact
         uses: actions/upload-artifact@v2

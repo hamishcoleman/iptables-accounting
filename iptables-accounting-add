@@ -9,7 +9,7 @@ if [ -z "$1" ]; then
     echo "If a file is given, it will load the ports from each line of"
     echo "the file."
     echo "If a directory is given, it will load files matching *.conf"
-    echo "from the directory
+    echo "from the directory"
     exit 0
 fi
 
