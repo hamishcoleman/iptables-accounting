@@ -9,12 +9,16 @@ fi
 
 FLUSH=false
 OP=-A
+DRY=""
 while case "$1" in
         --flush)
             FLUSH=true
             ;;
         --del)
             OP=-D
+            ;;
+        --dryrun)
+            DRY="echo"
             ;;
         --*)
             echo "ERROR: Unknown Option $1"
@@ -28,8 +32,8 @@ while case "$1" in
 done
 
 if [ "$FLUSH" = "true" ]; then
-    iptables -t raw -f prerouting
-    iptables -t raw -F OUTPUT
+    $DRY iptables -t raw -f prerouting
+    $DRY iptables -t raw -F OUTPUT
 fi
 
 while [ -n "$1" ]; do
@@ -39,10 +43,10 @@ while [ -n "$1" ]; do
     fi
     PORT=$(echo "$1" | cut -d/ -f1)
 
-    iptables -t raw $OP PREROUTING \
+    $DRY iptables -t raw $OP PREROUTING \
         -p "$PROTO" --dport "$PORT" \
         -m comment --comment ACCT
-    iptables -t raw $OP OUTPUT \
+    $DRY iptables -t raw $OP OUTPUT \
         -p "$PROTO" --sport "$PORT" \
         -m comment --comment ACCT
 
