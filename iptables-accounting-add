@@ -36,7 +36,10 @@ if [ "$FLUSH" = "true" ]; then
     $DRY iptables -t raw -F OUTPUT
 fi
 
-while [ -n "$1" ]; do
+op_one() {
+    local OP="$1"
+    shift
+
     PROTO=$(echo "$1" | cut -s -d/ -f2)
     if [ -z "$PROTO" ]; then
         PROTO=tcp
@@ -49,6 +52,9 @@ while [ -n "$1" ]; do
     $DRY iptables -t raw $OP OUTPUT \
         -p "$PROTO" --sport "$PORT" \
         -m comment --comment ACCT
+}
 
+while [ -n "$1" ]; do
+    op_one "$OP" "$1"
     shift
 done
