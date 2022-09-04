@@ -4,7 +4,12 @@
 
 all: iptables-accounting
 
-CFLAGS+=-Wall -Werror
+CFLAGS+=-Wall -Wextra -Werror -fanalyzer
+
+ifdef SANITISE
+CFLAGS+=-fsanitize=leak
+LDFLAGS+=-fsanitize=leak
+endif
 
 LINT_CCODE+=iptables-accounting.c
 LINT_SHELL+=iptables-accounting-add
