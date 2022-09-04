@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/bin/bash
 #
 #
 
@@ -7,16 +7,29 @@ if [ -z "$1" ]; then
     exit 0
 fi
 
-if [ "$1" = "--flush" ]; then
-    iptables -t raw -F PREROUTING
-    iptables -t raw -F OUTPUT
-    shift
-fi
-
+FLUSH=false
 OP=-A
-if [ "$1" = "--del" ]; then
-    OP=-D
+while case "$1" in
+        --flush)
+            FLUSH=true
+            ;;
+        --del)
+            OP=-D
+            ;;
+        --*)
+            echo "ERROR: Unknown Option $1"
+            exit 1
+            ;;
+        *)
+            false
+            ;;
+    esac; do
     shift
+done
+
+if [ "$FLUSH" = "true" ]; then
+    iptables -t raw -f prerouting
+    iptables -t raw -F OUTPUT
 fi
 
 while [ -n "$1" ]; do
