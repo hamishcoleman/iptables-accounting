@@ -51,3 +51,19 @@ jobs:
       - name: Run the lint tools
         run: |
           make lint
+
+  clang:
+    name: Build and test with clang
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v2
+        with:
+          fetch-depth: 0
+      - name: Fix Checkout
+        run: |
+          git fetch --force --tags
+
+      - name: Run minimal test build
+        run: |
+          make CLANG=1 test

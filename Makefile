@@ -4,11 +4,20 @@
 
 all: iptables-accounting
 
-CFLAGS+=-Wall -Wextra -Werror -fanalyzer
+CFLAGS+=-Wall -Wextra -Werror
+
+ifeq ($(CLANG),1)
+CC=clang
+endif
+
+ifneq ($(CLANG),1)
+CFLAGS+=-fanalyzer
 
 ifdef SANITISE
 CFLAGS+=-fsanitize=leak
 LDFLAGS+=-fsanitize=leak
+endif
+
 endif
 
 LINT_CCODE+=iptables-accounting.c
