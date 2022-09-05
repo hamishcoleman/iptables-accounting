@@ -169,6 +169,14 @@ void output_prom(FILE *input, FILE *output) {
 void http_connection(int fd) {
     char buf1[100];
 
+    struct timeval tv;
+    tv.tv_sec = 5;      // FIXME: dont hardcode the timeout
+    tv.tv_usec = 0;
+    if (setsockopt(fd, SOL_SOCKET, SO_RCVTIMEO, &tv, sizeof(tv))<0) {
+        perror("setsockopt");
+        return;
+    }
+
     FILE *reader = fdopen(fd, "r");
     FILE *output = fdopen(fd, "w");
 
@@ -229,6 +237,10 @@ void mode_service(int port) {
     }
 
     while ((client = accept(server, NULL, 0))) {
+        if (client<0) {
+            perror("accept");
+            exit(1);
+        }
         http_connection(client);
         close(client);
     }
