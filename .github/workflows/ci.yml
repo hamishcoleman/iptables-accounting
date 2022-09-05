@@ -66,4 +66,4 @@ jobs:
 
       - name: Run minimal test build
         run: |
-          make CLANG=1 test
+          make CC=clang NOANALYZER=1 test
