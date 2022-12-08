@@ -72,9 +72,94 @@ void argparser(int argc, char **argv) {
     }
 }
 
+int iptables_oneline(char *s, FILE *output) {
+    if (*s != '[') {
+        return -1;
+    }
+
+    s++;
+
+    char *packets = strtok(s,":");
+    char *bytes = strtok(NULL,"]");
+
+    char *opt;
+    char *chain = NULL;
+    char *proto = NULL;
+    char *port = NULL;
+    char *matchtag = NULL;
+
+    while ((opt = strtok(NULL," ")) != NULL) {
+        optarg = NULL;
+
+        if (*opt != '-') {
+            // We dont understand this, skip it
+            continue;
+        }
+        opt++;
+
+        if (*opt == '-') {
+            // a long opt
+            opt++;
+            if (strcmp("dport",opt)==0) {
+                char *dport = strtok(NULL," ");
+                if (!port) {
+                    port = dport;
+                }
+            } else if (strcmp("sport",opt)==0) {
+                char *sport = strtok(NULL," ");
+                if (!port) {
+                    port = sport;
+                }
+            } else if (strcmp("comment",opt)==0) {
+                char *comment = strtok(NULL," ");
+                // TODO: doesnt handle comments with spaces
+
+                // Check if our tag is here
+                matchtag = strstr(comment, "ACCT");
+            }
+            continue;
+        }
+
+        switch (*opt) {
+            case 'A':
+                chain = strtok(NULL," ");
+                break;
+            case 'p':
+                proto = strtok(NULL," ");
+                break;
+            case 'm': // module
+                strtok(NULL," ");
+                break;
+        }
+
+    }
+
+    if (!matchtag) {
+        // We didnt match on this line, so skip output
+        return -1;
+    }
+
+    char buf2[100];
+    char *labels = (char *)&buf2;
+    snprintf(labels, sizeof(buf2),
+             "chain=\"%s\",proto=\"%s\",port=\"%s\"",
+             chain, proto, port);
+
+    fprintf(output,"iptables_acct_packets_total{%s} %s\n", labels, packets);
+    fprintf(output,"iptables_acct_bytes_total{%s} %s\n", labels, bytes);
+
+    return 0;
+}
+
 void output_prom(FILE *input, FILE *output) {
     // [0:0] -A INPUT -f
     // [501:38322] -A INPUT -p tcp -m tcp --dport 22 -m comment --comment "Failsafe SSH" -j ACCEPT
+    //
+    // table inet counting {
+    //   chain INPUT {
+    //     type filter hook input priority filter; policy accept;
+    //     tcp dport 22 counter packets 0 bytes 0
+
 
     fprintf(output,"# TYPE iptables_acct_packets_total counter\n");
     fprintf(output,"# TYPE iptables_acct_bytes_total counter\n");
@@ -89,80 +174,8 @@ void output_prom(FILE *input, FILE *output) {
             return;
         }
 
-        if (*s != '[') {
-            continue;
-        }
+        iptables_oneline(s, output);
 
-        s++;
-
-        char *packets = strtok(s,":");
-        char *bytes = strtok(NULL,"]");
-
-        char *opt;
-        char *chain = NULL;
-        char *proto = NULL;
-        char *port = NULL;
-        char *matchtag = NULL;
-
-        while ((opt = strtok(NULL," ")) != NULL) {
-            optarg = NULL;
-
-            if (*opt != '-') {
-                // We dont understand this, skip it
-                continue;
-            }
-            opt++;
-
-            if (*opt == '-') {
-                // a long opt
-                opt++;
-                if (strcmp("dport",opt)==0) {
-                    char *dport = strtok(NULL," ");
-                    if (!port) {
-                        port = dport;
-                    }
-                } else if (strcmp("sport",opt)==0) {
-                    char *sport = strtok(NULL," ");
-                    if (!port) {
-                        port = sport;
-                    }
-                } else if (strcmp("comment",opt)==0) {
-                    char *comment = strtok(NULL," ");
-                    // TODO: doesnt handle comments with spaces
-
-                    // Check if our tag is here
-                    matchtag = strstr(comment, "ACCT");
-                }
-                continue;
-            }
-
-            switch (*opt) {
-                case 'A':
-                    chain = strtok(NULL," ");
-                    break;
-                case 'p':
-                    proto = strtok(NULL," ");
-                    break;
-                case 'm': // module
-                    strtok(NULL," ");
-                    break;
-            }
-
-        }
-
-        if (!matchtag) {
-            // We didnt match on this line, so skip output
-            continue;
-        }
-
-        char buf2[100];
-        char *labels = (char *)&buf2;
-        snprintf(labels, sizeof(buf2),
-                 "chain=\"%s\",proto=\"%s\",port=\"%s\"",
-                 chain, proto, port);
-
-        fprintf(output,"iptables_acct_packets_total{%s} %s\n", labels, packets);
-        fprintf(output,"iptables_acct_bytes_total{%s} %s\n", labels, bytes);
     }
 }
 
