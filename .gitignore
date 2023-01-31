@@ -2,6 +2,9 @@
 # vim swapfile
 .*.swp
 
+# generated intermediates
+strbuf.o
 # generated outputs
 iptables-accounting
+strbuf-tests
 test.output

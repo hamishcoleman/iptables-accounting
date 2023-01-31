@@ -16,10 +16,20 @@ LDFLAGS+=-fsanitize=leak
 endif
 
 LINT_CCODE+=iptables-accounting.c
+LINT_CCODE+=strbuf.c strbuf.h strbuf-tests.c
 LINT_SHELL+=iptables-accounting-add
 
 BUILD_DEP+=uncrustify
 BUILD_DEP+=yamllint
+
+CLEAN+=iptables-accounting
+CLEAN+=strbuf-tests
+CLEAN+=*.o
+
+strbuf.o: strbuf.h
+strbuf-tests: strbuf.o
+
+iptables-accounting: strbuf.o
 
 .PHONY: build-dep
 build-dep:
@@ -41,13 +51,18 @@ lint.yaml:
 	yamllint .
 
 .PHONY: test
-test: test.units
+test: test.strbuf
+test: test.unit
 
-.PHONY: test.units
-test.units: iptables-accounting test.input test.expected
+.PHONY: test.strbuf
+test.strbuf: strbuf-tests
+	./strbuf-tests
+
+.PHONY: test.unit
+test.unit: iptables-accounting test.input test.expected
 	./iptables-accounting --test <test.input >test.output
 	cmp test.expected test.output
 
 .PHONY: clean
 clean:
-	rm -f iptables-accounting
+	rm -f ${CLEAN}

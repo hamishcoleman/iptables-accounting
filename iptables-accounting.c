@@ -7,8 +7,11 @@
 #include <getopt.h>
 #include <string.h>
 #include <sys/socket.h>
+#include <time.h>
 #include <arpa/inet.h>
 #include <unistd.h>
+
+#include "strbuf.h"
 
 /* FIXME: globals */
 int service_port = 8088;
@@ -151,7 +154,7 @@ struct linedata iptables_oneline(char *s) {
     return d;
 }
 
-void output_prom(FILE *input, FILE *output) {
+strbuf_t *generate_prom(FILE *input, strbuf_t *p) {
     // [0:0] -A INPUT -f
     // [501:38322] -A INPUT -p tcp -m tcp --dport 22 -m comment --comment "Failsafe SSH" -j ACCEPT
     //
@@ -162,18 +165,21 @@ void output_prom(FILE *input, FILE *output) {
 
     struct linedata d;
 
-    fprintf(output,"# TYPE iptables_acct_packets_total counter\n");
-    fprintf(output,"# TYPE iptables_acct_bytes_total counter\n");
+    p = sb_reprintf(p,"# TYPE iptables_acct_packets_total counter\n");
+    p = sb_reprintf(p,"# TYPE iptables_acct_bytes_total counter\n");
+    p = sb_reprintf(p,"buffer_capacity_bytes %i\n", p->capacity);
 
     char buf1[100];
+    int lines = 0;
 
     while (!feof(input)) {
         char *s = (char *)&buf1;
         *s = 0;
 
         if (fgets(s, sizeof(buf1), input) == NULL) {
-            return;
+            break;
         }
+        lines ++;
 
         d = iptables_oneline(s);
 
@@ -188,12 +194,64 @@ void output_prom(FILE *input, FILE *output) {
                  "chain=\"%s\",proto=\"%s\",port=\"%s\"",
                  d.chain, d.proto, d.port);
 
-        fprintf(output,"iptables_acct_packets_total{%s} %s\n", labels, d.packets);
-        fprintf(output,"iptables_acct_bytes_total{%s} %s\n", labels, d.bytes);
+        p = sb_reprintf(p,"iptables_acct_packets_total{%s} %s\n",
+            labels,
+            d.packets
+        );
+        p = sb_reprintf(p,"iptables_acct_bytes_total{%s} %s\n",
+            labels,
+            d.bytes
+        );
     }
+
+    p = sb_reprintf(p,"iptables_read_lines %i\n", lines);
+    if (p) {
+        p = sb_reprintf(p,"buffer_used_bytes %i\n", p->index);
+    }
+
+    return p;
 }
 
-void http_connection(int fd) {
+// Rounds the given time up to the closest multiple of interval
+time_t time_round(time_t time, time_t interval) {
+    return ((time / interval) + 1) * interval;
+}
+
+// FIXME: globals
+time_t p_expires = 0;
+time_t inject_now = 0;
+FILE *inject_input = NULL;
+
+strbuf_t *output_prom(strbuf_t *p, FILE *output) {
+    time_t now = time(NULL);
+    if (now >= p_expires) {
+        // Refresh the cache
+        sb_zero(p);
+        p_expires = time_round(now,10);
+
+        FILE *input;
+        if (inject_now) {
+            // Effectively mock the iptables-save command for automated tests
+            now = inject_now;
+            input = inject_input;
+        } else {
+            input = popen("/sbin/iptables-save -c -t raw", "r");
+        }
+        p = generate_prom(input, p);
+        p = sb_reprintf(p, "buffer_timestamp %li\n", now);
+        fclose(input);
+    }
+
+    if (!p) {
+        fprintf(output,"buffer_overflow 1\n");
+        return NULL;
+    }
+
+    fwrite(p->str, p->index, 1, output);
+    return p;
+}
+
+strbuf_t *http_connection(strbuf_t *p, int fd) {
     char buf1[100];
 
     struct timeval tv;
@@ -201,7 +259,7 @@ void http_connection(int fd) {
     tv.tv_usec = 0;
     if (setsockopt(fd, SOL_SOCKET, SO_RCVTIMEO, &tv, sizeof(tv))<0) {
         perror("setsockopt");
-        return;
+        return p;
     }
 
     FILE *reader = fdopen(fd, "r");
@@ -224,20 +282,16 @@ void http_connection(int fd) {
         }
     }
 
-    // TODO: cache the output
-
-    FILE *input = popen("/sbin/iptables-save -c -t raw", "r");
-
     fprintf(output,"HTTP/1.0 200 OK\n\n");
-    output_prom(input, output);
+    p = output_prom(p, output);
 
-    fclose(input);
 out1:
     fclose(output);
     fclose(reader);
+    return p;
 }
 
-void mode_service(int port) {
+void mode_service(int port, strbuf_t *p) {
     int server;
     int client;
     int on = 1;
@@ -268,27 +322,32 @@ void mode_service(int port) {
             perror("accept");
             exit(1);
         }
-        http_connection(client);
+
+        p = http_connection(p, client);
         close(client);
     }
 }
 
 int main(int argc, char **argv) {
-    FILE *input;
 
     argparser(argc, argv);
 
+    // Create the cache buffer with a reasonable max size
+    strbuf_t *p = sb_malloc(1000);
+    p->capacity_max = 200000;
+
     switch (mode) {
         case MODE_SERVICE:
-            mode_service(service_port);
+            mode_service(service_port, p);
             break;
         case MODE_TEST:
-            output_prom(stdin, stdout);
+            inject_now = 1644144574;
+            inject_input = stdin;
+            /* FALL THROUGH */
+        case MODE_DUMP: {
+            output_prom(p, stdout);
             break;
-        case MODE_DUMP:
-            input = popen("iptables-save -c -t raw", "r");
-            output_prom(input, stdout);
-            break;
+        }
     }
 
     return 0;
