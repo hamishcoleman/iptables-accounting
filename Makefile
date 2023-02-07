@@ -29,7 +29,7 @@ CLEAN+=*.o
 strbuf.o: strbuf.h
 strbuf-tests: strbuf.o
 
-iptables-accounting: strbuf.o
+iptables-accounting: strbuf.o httpd.o
 
 .PHONY: build-dep
 build-dep:
