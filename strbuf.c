@@ -121,14 +121,22 @@ strbuf_t *sb_reprintf(strbuf_t *p, const char *format, ...) {
     }
 }
 
-size_t sb_read(int fd, strbuf_t *p) {
-    size_t size;
+ssize_t sb_read(int fd, strbuf_t *p) {
+    ssize_t size;
 
     size = read(fd, &p->str[p->index], sb_avail(p));
-    if (size > 0) {
+    if (size != -1) {
         p->index += size;
     }
     return size;
+}
+
+ssize_t sb_write(int fd, strbuf_t *p, int index, ssize_t size) {
+    if (size == -1) {
+        size = p->index - index;
+    }
+
+    return write(fd, &p->str[index], size);
 }
 
 void sb_dump(strbuf_t *p) {

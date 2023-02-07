@@ -1,5 +1,5 @@
 /*
- * Implentation for the string buffer abstraction
+ * Tests for the string buffer abstraction
  *
  * Copyright (C) 2023 Hamish Coleman
  * SPDX-License-Identifier: GPL-2.0-only

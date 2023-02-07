@@ -27,8 +27,7 @@ typedef struct strbuf {
 } while(0)
 
 void sb_zero(strbuf_t *);
-strbuf_t *sb_malloc(size_t)
-    __attribute__ ((malloc));
+strbuf_t *sb_malloc(size_t) __attribute__ ((malloc));
 strbuf_t *sb_realloc(strbuf_t *, size_t);
 size_t sb_len(strbuf_t *);
 size_t sb_avail(strbuf_t *);
@@ -38,7 +37,8 @@ size_t sb_printf(strbuf_t *, const char *, ...)
     __attribute__ ((format (printf, 2, 3)));
 strbuf_t *sb_reprintf(strbuf_t *, const char *, ...)
     __attribute__ ((format (printf, 2, 3)));
-size_t sb_read(int, strbuf_t *);
+ssize_t sb_read(int, strbuf_t *);
+ssize_t sb_write(int, strbuf_t *, int, ssize_t);
 void sb_dump(strbuf_t *);
 
 #endif
