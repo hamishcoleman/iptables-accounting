@@ -1,6 +1,5 @@
 # TYPE iptables_acct_packets_total counter
 # TYPE iptables_acct_bytes_total counter
-buffer_capacity_bytes 1000
 iptables_acct_packets_total{chain="PREROUTING",proto="tcp",port="22"} 500
 iptables_acct_bytes_total{chain="PREROUTING",proto="tcp",port="22"} 5000
 iptables_acct_packets_total{chain="PREROUTING",proto="udp",port="53"} 600
@@ -10,5 +9,6 @@ iptables_acct_bytes_total{chain="OUTPUT",proto="tcp",port="22"} 7000
 iptables_acct_packets_total{chain="OUTPUT",proto="udp",port="53"} 800
 iptables_acct_bytes_total{chain="OUTPUT",proto="udp",port="53"} 8000
 iptables_read_lines 15
+buffer_capacity_bytes 1000
 buffer_used_bytes 706
 buffer_timestamp 1644144574

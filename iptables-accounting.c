@@ -167,7 +167,6 @@ strbuf_t *generate_prom(FILE *input, strbuf_t *p) {
 
     p = sb_reprintf(p,"# TYPE iptables_acct_packets_total counter\n");
     p = sb_reprintf(p,"# TYPE iptables_acct_bytes_total counter\n");
-    p = sb_reprintf(p,"buffer_capacity_bytes %i\n", p->capacity);
 
     char buf1[100];
     int lines = 0;
@@ -179,7 +178,7 @@ strbuf_t *generate_prom(FILE *input, strbuf_t *p) {
         if (fgets(s, sizeof(buf1), input) == NULL) {
             break;
         }
-        lines ++;
+        lines++;
 
         d = iptables_oneline(s);
 
@@ -191,8 +190,8 @@ strbuf_t *generate_prom(FILE *input, strbuf_t *p) {
         char buf2[100];
         char *labels = (char *)&buf2;
         snprintf(labels, sizeof(buf2),
-                 "chain=\"%s\",proto=\"%s\",port=\"%s\"",
-                 d.chain, d.proto, d.port);
+            "chain=\"%s\",proto=\"%s\",port=\"%s\"",
+            d.chain, d.proto, d.port);
 
         p = sb_reprintf(p,"iptables_acct_packets_total{%s} %s\n",
             labels,
@@ -205,9 +204,8 @@ strbuf_t *generate_prom(FILE *input, strbuf_t *p) {
     }
 
     p = sb_reprintf(p,"iptables_read_lines %i\n", lines);
-    if (p) {
-        p = sb_reprintf(p,"buffer_used_bytes %i\n", p->index);
-    }
+    p = sb_reprintf(p,"buffer_capacity_bytes %i\n", p->capacity);
+    p = sb_reprintf(p,"buffer_used_bytes %i\n", p->index);
 
     return p;
 }
@@ -222,7 +220,7 @@ time_t p_expires = 0;
 time_t inject_now = 0;
 FILE *inject_input = NULL;
 
-strbuf_t *output_prom(strbuf_t *p, FILE *output) {
+strbuf_t *cache_generate_prom(strbuf_t *p) {
     time_t now = time(NULL);
     if (now >= p_expires) {
         // Refresh the cache
@@ -242,13 +240,11 @@ strbuf_t *output_prom(strbuf_t *p, FILE *output) {
         fclose(input);
     }
 
-    if (!p) {
-        fprintf(output,"buffer_overflow 1\n");
-        return NULL;
-    }
-
-    fwrite(p->str, p->index, 1, output);
     return p;
+}
+
+void send_str(int fd, char *s) {
+    write(fd,s,strlen(s));
 }
 
 strbuf_t *http_connection(strbuf_t *p, int fd) {
@@ -329,6 +325,7 @@ void mode_service(int port, strbuf_t *p) {
 }
 
 int main(int argc, char **argv) {
+    int outfd = 1;   // stdout
 
     argparser(argc, argv);
 
@@ -343,9 +340,15 @@ int main(int argc, char **argv) {
         case MODE_TEST:
             inject_now = 1644144574;
             inject_input = stdin;
-            /* FALL THROUGH */
+        /* FALL THROUGH */
         case MODE_DUMP: {
-            output_prom(p, stdout);
+            p = cache_generate_prom(p);
+            if (!p) {
+                send_str(outfd, "HTTP/1.0 500 overflow\n\nbuffer_overflow 1\n");
+                return -1;
+            }
+
+            sb_write(outfd, p, 0, -1);
             break;
         }
     }
