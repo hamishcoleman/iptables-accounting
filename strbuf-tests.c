@@ -16,7 +16,7 @@
 void strbuf_tests() {
     strbuf_t *p = sb_malloc(10);
     assert(p);
-    assert(p->index==0);
+    assert(p->wr_pos==0);
     assert(p->capacity==10);
     assert(p->capacity_max==10);
 
@@ -31,43 +31,43 @@ void strbuf_tests() {
 
     r = sb_append(p, "abcd", 4);
     assert(r==-1);
-    assert(p->index==8);
+    assert(p->wr_pos==8);
 
     sb_zero(p);
-    assert(p->index==0);
+    assert(p->wr_pos==0);
     assert(p->capacity==10);
 
     r = sb_printf(p, "0x%02x", 10);
     assert(r==4);
-    assert(r==(int)p->index);
+    assert(r==(int)p->wr_pos);
     assert(!strncmp(p->str, "0x0a", 5));
 
     r = sb_printf(p, "0x%02x", 20);
     assert(r==8);
-    assert(r==(int)p->index);
+    assert(r==(int)p->wr_pos);
     assert(!strncmp(p->str, "0x0a0x14", 9));
 
     // This will fail to append the entire string
     r = sb_printf(p, "0x%02x", 40);
     assert(r==12);
-    assert(p->index==8);
+    assert(p->wr_pos==8);
     assert(!strncmp(p->str, "0x0a0x140", 10));
 
     // This print just fits into the buffer
     r = sb_printf(p, "Z");
     assert(r==9);
-    assert(r==(int)p->index);
+    assert(r==(int)p->wr_pos);
     assert(!strncmp(p->str, "0x0a0x14Z", 10));
 
     // The max capacity is still set to the size at malloc
     strbuf_t *np = sb_reprintf(p, "%05i", 1024);
     assert(!np);
-    assert(p->index==9);
+    assert(p->wr_pos==9);
 
     p->capacity_max = 1000;
     p = sb_reprintf(p, "%05i", 1024);
     assert(p);
-    assert(p->index==14);
+    assert(p->wr_pos==14);
     assert(p->capacity==15);
     assert(!strncmp(p->str, "0x0a0x14Z01024", 15));
 

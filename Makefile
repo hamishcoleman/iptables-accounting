@@ -17,6 +17,7 @@ endif
 
 LINT_CCODE+=iptables-accounting.c
 LINT_CCODE+=strbuf.c strbuf.h strbuf-tests.c
+LINT_CCODE+=connslot.c connslot.h
 LINT_SHELL+=iptables-accounting-add
 
 BUILD_DEP+=uncrustify
@@ -28,8 +29,10 @@ CLEAN+=*.o
 
 strbuf.o: strbuf.h
 strbuf-tests: strbuf.o
+connslot.o: connslot.h
+httpd-test: connslot.o strbuf.o
 
-iptables-accounting: strbuf.o httpd.o
+iptables-accounting: strbuf.o connslot.o
 
 .PHONY: build-dep
 build-dep:
@@ -40,7 +43,7 @@ lint: lint.ccode lint.shell lint.yaml
 
 .PHONY: lint.ccode
 lint.ccode:
-	uncrustify -c uncrustify.cfg --no-backup ${LINT_CCODE}
+	uncrustify -c uncrustify.cfg --check ${LINT_CCODE}
 
 .PHONY: lint.shell
 lint.shell:

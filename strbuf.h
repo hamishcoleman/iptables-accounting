@@ -1,5 +1,5 @@
 /*
- * Internal interface definitions for the strbuf abstrction
+ * Internal interface definitions for the strbuf abstraction
  *
  * Copyright (C) 2023 Hamish Coleman
  * SPDX-License-Identifier: GPL-2.0-only
@@ -11,10 +11,10 @@
 #include <stdarg.h>
 
 typedef struct strbuf {
-    unsigned int index;
     unsigned int capacity;
     unsigned int capacity_max;  // When auto reallocing, what is the largest
-    unsigned int user;          // Space for user flags and/or tags
+    unsigned int wr_pos;        // str[] append position (arriving data)
+    unsigned int rd_pos;        // str[] read position (processing data)
     char str[];
 } strbuf_t;
 
@@ -23,7 +23,8 @@ typedef struct strbuf {
 #define STRBUF_INIT(buf,p) do { \
         buf = (void *)p; \
         buf->capacity = sizeof(p) - sizeof(strbuf_t); \
-        buf->index = 0; \
+        buf->capacity_max = buf->capacity; \
+        buf->wr_pos = 0; \
 } while(0)
 
 void sb_zero(strbuf_t *);

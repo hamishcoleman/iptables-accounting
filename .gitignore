@@ -4,7 +4,10 @@
 
 # generated intermediates
 strbuf.o
+connslot.o
+
 # generated outputs
 iptables-accounting
 strbuf-tests
+httpd-test
 test.output

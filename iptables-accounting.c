@@ -12,6 +12,7 @@
 #include <unistd.h>
 
 #include "strbuf.h"
+#include "connslot.h"
 
 /* FIXME: globals */
 int service_port = 8088;
@@ -205,7 +206,7 @@ strbuf_t *generate_prom(FILE *input, strbuf_t *p) {
 
     p = sb_reprintf(p,"iptables_read_lines %i\n", lines);
     p = sb_reprintf(p,"buffer_capacity_bytes %i\n", p->capacity);
-    p = sb_reprintf(p,"buffer_used_bytes %i\n", p->index);
+    p = sb_reprintf(p,"buffer_used_bytes %i\n", p->wr_pos);
 
     return p;
 }
@@ -248,7 +249,6 @@ void send_str(int fd, char *s) {
 }
 
 strbuf_t *http_connection(strbuf_t *p, int fd) {
-    char buf1[100];
 
     struct timeval tv;
     tv.tv_sec = 5;      // FIXME: dont hardcode the timeout
@@ -258,32 +258,44 @@ strbuf_t *http_connection(strbuf_t *p, int fd) {
         return p;
     }
 
-    FILE *reader = fdopen(fd, "r");
-    FILE *output = fdopen(fd, "w");
+    conn_t conn;
+    conn_init(&conn);
+    conn.fd = fd;
 
-    char *s = (char *)&buf1;
-    *s = 0;
-    if (fgets(s, sizeof(buf1), reader) == NULL) {
-        goto out1;
-    }
-    if (strncmp("GET /metrics ",s,13) != 0) {
-        goto out1;
-    }
+    while (1) {
+        conn_read(&conn);
 
-    s = (char *)&buf1;
-    while (fgets(s, sizeof(buf1), reader)) {
-        if (s[0]=='\r' && s[1]=='\n') {
-            // just the newline
+        // TODO:
+        // - if timeout
+        // - if overflow
+        if (conn.state == READY) {
             break;
         }
     }
 
-    fprintf(output,"HTTP/1.0 200 OK\n\n");
-    p = output_prom(p, output);
+    if (strncmp("GET /metrics ",conn.request->str,13) != 0) {
+        goto out1;
+    }
+
+    p = cache_generate_prom(p);
+
+    if (!p) {
+        send_str(fd, "HTTP/1.0 500 overflow\n\nbuffer_overflow 1\n");
+        return NULL;
+    }
+
+    // TODO:
+    // - cork
+    // - retry
+    send_str(fd,"HTTP/1.0 200 OK\n\n");
+    // TODO:
+    // - loop
+    // - timeout
+    conn.reply = p;
+    conn_write(&conn);
 
 out1:
-    fclose(output);
-    fclose(reader);
+    free(conn.request);
     return p;
 }
 
