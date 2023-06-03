@@ -114,14 +114,14 @@ ssize_t conn_write(conn_t *conn) {
             conn->reply_header,
             conn->reply_sendpos,
             -1
-        );
+            );
     } else {
         sent = sb_write(
             conn->fd,
             conn->reply,
             conn->reply_sendpos - conn->reply_header->wr_pos,
             -1
-        );
+            );
     }
     unsigned int end_pos = conn->reply_header->wr_pos + conn->reply->wr_pos;
 #endif
@@ -208,7 +208,7 @@ int httpdslots_accept(conn_t *slot, size_t size, int server) {
     fcntl(client, F_SETFL, O_NONBLOCK);
 
     slot[i].activity = time(NULL);
-    slot[i].fd = client; 
+    slot[i].fd = client;
     return i;
 }
 
@@ -225,7 +225,7 @@ int httpdslots_closeidle(conn_t *slot, size_t size) {
         }
         if (slot[i].activity < min_activity) {
             conn_close(&slot[i]);
-            nr_closed ++;
+            nr_closed++;
         }
     }
     return nr_closed;
