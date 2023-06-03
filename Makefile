@@ -18,7 +18,6 @@ endif
 LINT_CCODE+=iptables-accounting.c
 LINT_CCODE+=strbuf.c strbuf.h strbuf-tests.c
 LINT_CCODE+=connslot.c connslot.h
-LINT_CCODE+=httpd-test.c
 LINT_SHELL+=iptables-accounting-add
 
 BUILD_DEP+=uncrustify

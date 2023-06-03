@@ -191,17 +191,17 @@ strbuf_t *generate_prom(FILE *input, strbuf_t *p) {
         char buf2[100];
         char *labels = (char *)&buf2;
         snprintf(labels, sizeof(buf2),
-                 "chain=\"%s\",proto=\"%s\",port=\"%s\"",
-                 d.chain, d.proto, d.port);
+            "chain=\"%s\",proto=\"%s\",port=\"%s\"",
+            d.chain, d.proto, d.port);
 
         p = sb_reprintf(p,"iptables_acct_packets_total{%s} %s\n",
-                        labels,
-                        d.packets
-                        );
+            labels,
+            d.packets
+        );
         p = sb_reprintf(p,"iptables_acct_bytes_total{%s} %s\n",
-                        labels,
-                        d.bytes
-                        );
+            labels,
+            d.bytes
+        );
     }
 
     p = sb_reprintf(p,"iptables_read_lines %i\n", lines);
