@@ -4,11 +4,14 @@
 
 #define _GNU_SOURCE
 #include <arpa/inet.h>
+#include <errno.h>
 #include <fcntl.h>
+#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <sys/socket.h>
 #include <sys/uio.h>
+#include <sys/un.h>
 #include <time.h>
 #include <unistd.h>
 
@@ -227,7 +230,7 @@ slots_t *slots_malloc(int nr_slots) {
     return slots;
 }
 
-int slots_listen_tcp(slots_t *slots, int port) {
+int _slots_listen_find_empty(slots_t *slots) {
     int listen_nr;
     for (listen_nr=0; listen_nr < SLOTS_LISTEN; listen_nr++) {
         if (slots->listen[listen_nr] == -1) {
@@ -236,6 +239,14 @@ int slots_listen_tcp(slots_t *slots, int port) {
     }
     if (listen_nr == SLOTS_LISTEN) {
         // All listen slots full
+        return -1;
+    }
+    return listen_nr;
+}
+
+int slots_listen_tcp(slots_t *slots, int port) {
+    int listen_nr = _slots_listen_find_empty(slots);
+    if (listen_nr <0) {
         return -2;
     }
 
@@ -253,6 +264,44 @@ int slots_listen_tcp(slots_t *slots, int port) {
     }
     setsockopt(server, SOL_SOCKET, SO_REUSEADDR, &on, sizeof(on));
     setsockopt(server, IPPROTO_IPV6, IPV6_V6ONLY, &off, sizeof(off));
+
+    if (bind(server, (struct sockaddr *) &addr, sizeof(addr)) < 0) {
+        return -1;
+    }
+
+    // backlog of 1 - low, but sheds load quickly when we run out of slots
+    if (listen(server, 1) < 0) {
+        return -1;
+    }
+
+    slots->listen[listen_nr] = server;
+    return 0;
+}
+
+int slots_listen_unix(slots_t *slots, char *path) {
+    int listen_nr = _slots_listen_find_empty(slots);
+    if (listen_nr <0) {
+        return -2;
+    }
+
+    struct sockaddr_un addr;
+
+    if (strlen(path) > sizeof(addr.sun_path) -1) {
+        return -1;
+    }
+
+    int server;
+
+    if ((server = socket(AF_UNIX, SOCK_STREAM, 0)) < 0) {
+        return -1;
+    }
+
+    addr.sun_family = AF_UNIX,
+    strncpy(addr.sun_path, path, sizeof(addr.sun_path) -1);
+
+    if (remove(path) == -1 && errno != ENOENT) {
+        return -1;
+    }
 
     if (bind(server, (struct sockaddr *) &addr, sizeof(addr)) < 0) {
         return -1;

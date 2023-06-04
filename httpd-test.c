@@ -62,6 +62,11 @@ void httpd_test(int port) {
         exit(1);
     }
 
+    if (slots_listen_unix(slots, "test.sock")!=0) {
+        perror("slots_listen_tcp");
+        exit(1);
+    }
+
     strbuf_t *reply = sb_malloc(48);
     reply->capacity_max = 1000;
     sb_printf(reply, "Hello World\n");
