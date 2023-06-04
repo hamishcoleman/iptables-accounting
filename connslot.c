@@ -65,15 +65,58 @@ void conn_read(conn_t *conn) {
 
     conn->activity = time(NULL);
 
+    // case protocol==HTTP
+
     if (conn->request->wr_pos<4) {
-        // Not enough bytes to match the memmem()
+        // Not enough bytes to match the end of header check
         return;
     }
 
-    void *p = memmem(conn->request->str, conn->request->wr_pos, "\r\n\r\n", 4);
-    if (p) {
-        conn->state = READY;
+    // retrieve the cached expected length, if any
+    unsigned int expected_length = conn->request->rd_pos;
+
+    if (expected_length == 0) {
+        char *p = memmem(conn->request->str, conn->request->wr_pos, "\r\n\r\n", 4);
+        if (!p) {
+            // As yet, we dont have an entire header
+            return;
+        }
+
+        int body_pos = p - conn->request->str + 4;
+
+        // Determine if we need to read a body
+        p = memmem(
+                conn->request->str,
+                conn->request->wr_pos,
+                "Content-Length:",
+                15);
+
+        if (!p) {
+            // We have an end of header, and the header has no content length field
+            // so assume there is no body to read
+            conn->state = READY;
+            return;
+        }
+
+        p+=15; // Skip the field name
+        unsigned int content_length = strtoul(p, NULL, 10);
+        expected_length = body_pos + content_length;
     }
+
+    // By this point we must have an expected_length
+
+    // cache the calcaulated total length in the conn
+    conn->request->rd_pos = expected_length;
+
+    if (conn->request->wr_pos < expected_length) {
+        // Dont have enough length
+        return;
+    }
+
+    // Do have enough length
+    conn->state = READY;
+    conn->request->rd_pos = 0;
+    return;
 }
 
 ssize_t conn_write(conn_t *conn) {

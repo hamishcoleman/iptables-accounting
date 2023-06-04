@@ -142,12 +142,18 @@ void httpd_test(int port) {
                 // - parse request
 
                 // generate reply
-                slot[i].reply = reply;
+
+                if (strncmp("POST /api ",slot[i].request->str,10) == 0) {
+                    slot[i].reply = slot[i].request;
+                } else {
+                    slot[i].reply = reply;
+                }
+
                 strbuf_t *p = slot[i].reply_header;
                 p = sb_reprintf(p, "HTTP/1.1 200 OK\n");
                 p = sb_reprintf(p, "x-slot: %i\n", i);
                 p = sb_reprintf(p, "x-open: %i\n", nr_open);
-                p = sb_reprintf(p, "Content-Length: %i\n\n", reply->wr_pos);
+                p = sb_reprintf(p, "Content-Length: %i\n\n", slot[i].reply->wr_pos);
 
                 if (p) {
                     slot[i].reply_header = p;
