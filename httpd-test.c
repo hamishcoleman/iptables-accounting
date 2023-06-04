@@ -113,12 +113,12 @@ void httpd_test(int port) {
                     perror("accept");
                     exit(1);
 
-                case -2: 
+                case -2:
                     // No slots! - shouldnt happen, since we gate on nr_open
                     printf("no slots\n");
                     break;
-           
-                default: 
+
+                default:
                     nr_open++;
                     // Try to immediately read the request
                     FD_SET(slot[slotnr].fd, &readers);
@@ -157,7 +157,7 @@ void httpd_test(int port) {
 
                 if (p) {
                     slot[i].reply_header = p;
-                
+
                 } else {
                     // We filled up the reply_header strbuf
                     send_str(slot[i].fd, "HTTP/1.0 500 \n\n");
