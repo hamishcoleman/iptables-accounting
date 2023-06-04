@@ -5,6 +5,7 @@
 # generated intermediates
 strbuf.o
 connslot.o
+jsonrpc.o
 
 # generated outputs
 iptables-accounting

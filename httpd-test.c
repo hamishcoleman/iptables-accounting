@@ -5,6 +5,7 @@
  * SPDX-License-Identifier: GPL-2.0-only
  */
 
+#define _GNU_SOURCE
 #include <signal.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -16,6 +17,34 @@
 
 #include "strbuf.h"
 #include "connslot.h"
+#include "jsonrpc.h"
+
+strbuf_t *do_jsonrpc(strbuf_t *request, strbuf_t *reply) {
+    // Dont bother looking at the header fields
+    // Assume the body is zero terminated text
+
+    sb_zero(reply);
+
+    char *body = memmem(request->str, request->wr_pos, "\r\n\r\n", 4);
+    if (!body) {
+        reply = sb_reprintf(reply, "Error: no body\n");
+        return reply;
+    }
+    body += 4;
+
+    jsonrpc_t json;
+
+    if (jsonrpc_parse(body, &json) != 0) {
+        reply = sb_reprintf(reply, "Error: parsing json\n");
+        return reply;
+    }
+
+    reply = sb_reprintf(reply, "dump:\n");
+    reply = sb_reprintf(reply, "method=%s\n", json.method);
+    reply = sb_reprintf(reply, "params=%s\n", json.params);
+    reply = sb_reprintf(reply, "id=%s\n", json.id);
+    return reply;
+}
 
 void send_str(int fd, char *s) {
     write(fd,s,strlen(s));
@@ -86,6 +115,7 @@ void httpd_test(int port) {
             }
 
             if (slots->conn[i].state == READY) {
+                strbuf_t *p;
                 // TODO:
                 // - parse request
 
@@ -93,11 +123,18 @@ void httpd_test(int port) {
 
                 if (strncmp("POST /echo ",slots->conn[i].request->str,10) == 0) {
                     slots->conn[i].reply = slots->conn[i].request;
+                } else if (strncmp("POST /jsonrpc ",slots->conn[i].request->str,13) == 0) {
+                    // TODO: helper to extract http body
+                    p = sb_reappend(slots->conn[i].request, "\0", 1);
+                    slots->conn[i].request = p;
+
+                    reply = do_jsonrpc(slots->conn[i].request, reply);
+                    slots->conn[i].reply = reply;
                 } else {
                     slots->conn[i].reply = reply;
                 }
 
-                strbuf_t *p = slots->conn[i].reply_header;
+                p = slots->conn[i].reply_header;
                 p = sb_reprintf(p, "HTTP/1.1 200 OK\r\n");
                 p = sb_reprintf(p, "x-slot: %i\r\n", i);
                 p = sb_reprintf(p, "x-open: %i\r\n", slots->nr_open);

@@ -63,6 +63,18 @@ size_t sb_append(strbuf_t *p, void *buf, size_t bufsize) {
     return p->wr_pos;
 }
 
+strbuf_t *sb_reappend(strbuf_t *p, void *buf, size_t bufsize) {
+    size_t needed = p->wr_pos + bufsize;
+    if (needed > p->capacity) {
+        p = sb_realloc(p, needed);
+        if (!p) {
+            return NULL;
+        }
+    }
+    sb_append(p, buf, bufsize);
+    return p;
+}
+
 size_t sb_vprintf(strbuf_t *p, const char *format, va_list ap) {
     size_t avail = sb_avail(p);
 

@@ -19,6 +19,7 @@ LINT_CCODE+=iptables-accounting.c
 LINT_CCODE+=strbuf.c strbuf.h strbuf-tests.c
 LINT_CCODE+=connslot.c connslot.h
 LINT_CCODE+=httpd-test.c
+LINT_CCODE+=jsonrpc.c jsonrpc.h
 LINT_SHELL+=iptables-accounting-add
 
 BUILD_DEP+=uncrustify
@@ -31,7 +32,7 @@ CLEAN+=*.o
 strbuf.o: strbuf.h
 strbuf-tests: strbuf.o
 connslot.o: connslot.h
-httpd-test: connslot.o strbuf.o
+httpd-test: connslot.o strbuf.o jsonrpc.o
 
 iptables-accounting: strbuf.o connslot.o
 
