@@ -26,6 +26,15 @@ typedef struct conn {
     time_t activity;        // timestamp of last txn
 } conn_t;
 
+#define SLOTS_LISTEN 2
+typedef struct slots {
+    int nr_slots;
+    int nr_open;
+    int listen[SLOTS_LISTEN];
+    int timeout;
+    conn_t conn[];
+} slots_t;
+
 void conn_zero(conn_t *);
 int conn_init(conn_t *);
 void conn_read(conn_t *);
@@ -33,8 +42,10 @@ ssize_t conn_write(conn_t *);
 int conn_iswriter(conn_t *);
 void conn_close(conn_t *);
 
-int httpdslots_init(conn_t *, size_t);
-int httpdslots_fdset(conn_t *, size_t, fd_set *, fd_set *);
-int httpdslots_accept(conn_t *, size_t, int);
-int httpdslots_closeidle(conn_t *, size_t);
+slots_t *slots_malloc(int nr_slots);
+int slots_listen_tcp(slots_t *, int);
+int slots_fdset(slots_t *, fd_set *, fd_set *);
+int slots_accept(slots_t *, int);
+int slots_closeidle(slots_t *);
+int slots_fdset_loop(slots_t *, fd_set *, fd_set *);
 #endif

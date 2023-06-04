@@ -3,12 +3,13 @@
  */
 
 #define _GNU_SOURCE
+#include <arpa/inet.h>
 #include <fcntl.h>
 #include <stdlib.h>
 #include <string.h>
-#include <time.h>
 #include <sys/socket.h>
 #include <sys/uio.h>
+#include <time.h>
 #include <unistd.h>
 
 #include "connslot.h"
@@ -198,79 +199,200 @@ void conn_close(conn_t *conn) {
     conn_zero(conn);
 }
 
-int httpdslots_init(conn_t *slot, size_t size) {
-    int i;
-    int nr_slots = size / sizeof(conn_t);
+slots_t *slots_malloc(int nr_slots) {
+    size_t bytes = sizeof(slots_t) + nr_slots * sizeof(conn_t);
+    slots_t *slots = malloc(bytes);
+    if (!slots) {
+        return NULL;
+    }
+
+    slots->nr_slots = nr_slots;
+
+    // Set any defaults
+    slots->timeout = 60;
+
+    for (int i=0; i < SLOTS_LISTEN; i++) {
+        slots->listen[i] = -1;
+    }
 
     int r = 0;
-    for (i=0; i < nr_slots; i++) {
-        r += conn_init(&slot[i]);
+    for (int i=0; i < nr_slots; i++) {
+        r += conn_init(&slots->conn[i]);
     }
 
-    return r;
+    if (r!=0) {
+        // TODO: free all the successful strbuf mallocs
+        abort();
+    }
+    return slots;
 }
 
-int httpdslots_fdset(conn_t *slot, size_t size, fd_set *readers, fd_set *writers) {
+int slots_listen_tcp(slots_t *slots, int port) {
+    // TODO: support multiple listen sockets
+    if (slots->listen[0] != -1) {
+        return -2;
+    }
+
+    int server;
+    int on = 1;
+    int off = 0;
+    struct sockaddr_in6 addr = {
+        .sin6_family = AF_INET6,
+        .sin6_port = htons(port),
+        .sin6_addr = IN6ADDR_ANY_INIT,
+    };
+
+    if ((server = socket(AF_INET6, SOCK_STREAM, 0)) < 0) {
+        return -1;
+    }
+    setsockopt(server, SOL_SOCKET, SO_REUSEADDR, &on, sizeof(on));
+    setsockopt(server, IPPROTO_IPV6, IPV6_V6ONLY, &off, sizeof(off));
+
+    if (bind(server, (struct sockaddr *) &addr, sizeof(addr)) < 0) {
+        return -1;
+    }
+
+    // backlog of 1 - low, but sheds load quickly when we run out of slots
+    if (listen(server, 1) < 0) {
+        return -1;
+    }
+
+    slots->listen[0] = server;
+    return 0;
+}
+
+int slots_fdset(slots_t *slots, fd_set *readers, fd_set *writers) {
     int i;
-    int nr_slots = size / sizeof(conn_t);
     int fdmax = 0;
 
-    for (i=0; i<nr_slots; i++) {
-        if (slot[i].fd == -1) {
+    for (i=0; i<slots->nr_slots; i++) {
+        if (slots->conn[i].fd == -1) {
             continue;
         }
-        FD_SET(slot[i].fd, readers);
-        if (conn_iswriter(&slot[i])) {
-            FD_SET(slot[i].fd, writers);
+        int fd = slots->conn[i].fd;
+        FD_SET(fd, readers);
+        if (conn_iswriter(&slots->conn[i])) {
+            FD_SET(fd, writers);
         }
-        fdmax = (slot[i].fd > fdmax)? slot[i].fd : fdmax;
+        fdmax = (fd > fdmax)? fd : fdmax;
     }
+
+    // If we have room for more connections, we listen on the server socket(s)
+    if (slots->listen[0] && slots->nr_open < slots->nr_slots) {
+        for (i=0; i<SLOTS_LISTEN; i++) {
+            if (slots->listen[i] == -1) {
+                continue;
+            }
+            int fd = slots->listen[i];
+            FD_SET(fd, readers);
+            fdmax = (fd > fdmax)? fd : fdmax;
+        }
+    }
+
     return fdmax;
 }
 
-int httpdslots_accept(conn_t *slot, size_t size, int server) {
+int slots_accept(slots_t *slots, int listen) {
     int i;
-    int nr_slots = size / sizeof(conn_t);
 
     // TODO: remember previous checked slot and dont start at zero
-    for (i=0; i<nr_slots; i++) {
-        if (slot[i].fd == -1) {
+    for (i=0; i<slots->nr_slots; i++) {
+        if (slots->conn[i].fd == -1) {
             break;
         }
     }
 
-    if (i == nr_slots) {
+    if (i == slots->nr_slots) {
         // No room, inform the caller
         return -2;
     }
 
-    int client = accept(server, NULL, 0);
+    int client = accept(listen, NULL, 0);
     if (client == -1) {
         return -1;
     }
 
     fcntl(client, F_SETFL, O_NONBLOCK);
 
-    slot[i].activity = time(NULL);
-    slot[i].fd = client;
+    slots->nr_open++;
+    slots->conn[i].activity = time(NULL);
+    slots->conn[i].fd = client;
     return i;
 }
 
-int httpdslots_closeidle(conn_t *slot, size_t size) {
+int slots_closeidle(slots_t *slots) {
     int i;
-    int nr_slots = size / sizeof(conn_t);
     int nr_closed = 0;
-    int timeout = 60; // seconds
-    int min_activity = time(NULL) - timeout;
+    int min_activity = time(NULL) - slots->timeout;
 
-    for (i=0; i<nr_slots; i++) {
-        if (slot[i].fd == -1) {
+    for (i=0; i<slots->nr_slots; i++) {
+        if (slots->conn[i].fd == -1) {
             continue;
         }
-        if (slot[i].activity < min_activity) {
-            conn_close(&slot[i]);
+        if (slots->conn[i].activity < min_activity) {
+            conn_close(&slots->conn[i]);
             nr_closed++;
         }
     }
+    slots->nr_open -= nr_closed;
+    if (slots->nr_open < 0) {
+        slots->nr_open = 0;
+        // should not happen
+    }
+
     return nr_closed;
+}
+
+int slots_fdset_loop(slots_t *slots, fd_set *readers, fd_set *writers) {
+    // TODO: multiple listen sockets
+    if (FD_ISSET(slots->listen[0], readers)) {
+        // A new connection
+        int slotnr = slots_accept(slots, slots->listen[0]);
+
+        switch (slotnr) {
+            case -1:
+            case -2:
+                return slotnr;
+
+            default:
+                // Schedule slot for immediately reading
+                FD_SET(slots->conn[slotnr].fd, readers);
+        }
+    }
+
+    int nr_ready = 0;
+
+    for (int i=0; i<slots->nr_slots; i++) {
+        if (slots->conn[i].fd == -1) {
+            continue;
+        }
+
+        if (FD_ISSET(slots->conn[i].fd, readers)) {
+            conn_read(&slots->conn[i]);
+            // possibly sets state to READY
+        }
+
+        // After a read, we could be EMPTY or READY
+        // we reach state READY once there is a full request buf
+        if (slots->conn[i].state == READY) {
+            nr_ready++;
+            // TODO:
+            // - parse request
+            // - possibly callback to generate reply
+        }
+
+        // We cannot have got here if it started as an empty slot, so
+        // it must have transitioned to empty - close the slot
+        if (slots->conn[i].state == EMPTY) {
+            slots->nr_open--;
+            conn_close(&slots->conn[i]);
+            continue;
+        }
+
+        if (FD_ISSET(slots->conn[i].fd, writers)) {
+            conn_write(&slots->conn[i]);
+        }
+    }
+
+    return nr_ready;
 }
