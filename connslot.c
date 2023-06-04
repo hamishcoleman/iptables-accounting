@@ -89,7 +89,8 @@ void conn_read(conn_t *conn) {
                 conn->request->str,
                 conn->request->wr_pos,
                 "Content-Length:",
-                15);
+                15
+        );
 
         if (!p) {
             // We have an end of header, and the header has no content length field
@@ -153,18 +154,18 @@ ssize_t conn_write(conn_t *conn) {
 #if NOVEC
     if (conn->reply_sendpos < conn->reply_header->wr_pos) {
         sent = sb_write(
-            conn->fd,
-            conn->reply_header,
-            conn->reply_sendpos,
-            -1
-            );
+                conn->fd,
+                conn->reply_header,
+                conn->reply_sendpos,
+                -1
+        );
     } else {
         sent = sb_write(
-            conn->fd,
-            conn->reply,
-            conn->reply_sendpos - conn->reply_header->wr_pos,
-            -1
-            );
+                conn->fd,
+                conn->reply,
+                conn->reply_sendpos - conn->reply_header->wr_pos,
+                -1
+        );
     }
     unsigned int end_pos = conn->reply_header->wr_pos + conn->reply->wr_pos;
 #endif
