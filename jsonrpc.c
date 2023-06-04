@@ -1,4 +1,8 @@
 /*
+ * A very simplistic set of tools for extracting data from json strings
+ * with no memory allocations (It adds null bytes to the input string)
+ * and no expectation for seamlessly working with complex data input.
+ *
  *
  * Copyright (C) 2023 Hamish Coleman
  * SPDX-License-Identifier: GPL-2.0-only
