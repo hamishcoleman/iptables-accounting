@@ -4,8 +4,8 @@
  * SPDX-License-Identifier: GPL-2.0-only
  */
 
-#ifndef HTTPD_H
-#define HTTPD_H 1
+#ifndef CONNSLOT_H
+#define CONNSLOT_H
 
 #include "strbuf.h"
 
