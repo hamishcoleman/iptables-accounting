@@ -150,17 +150,17 @@ void httpd_test(int port) {
                 }
 
                 strbuf_t *p = slot[i].reply_header;
-                p = sb_reprintf(p, "HTTP/1.1 200 OK\n");
-                p = sb_reprintf(p, "x-slot: %i\n", i);
-                p = sb_reprintf(p, "x-open: %i\n", nr_open);
-                p = sb_reprintf(p, "Content-Length: %i\n\n", slot[i].reply->wr_pos);
+                p = sb_reprintf(p, "HTTP/1.1 200 OK\r\n");
+                p = sb_reprintf(p, "x-slot: %i\r\n", i);
+                p = sb_reprintf(p, "x-open: %i\r\n", nr_open);
+                p = sb_reprintf(p, "Content-Length: %i\r\n\r\n", slot[i].reply->wr_pos);
 
                 if (p) {
                     slot[i].reply_header = p;
 
                 } else {
                     // We filled up the reply_header strbuf
-                    send_str(slot[i].fd, "HTTP/1.0 500 \n\n");
+                    send_str(slot[i].fd, "HTTP/1.0 500 \r\n\r\n");
                     slot[i].state = EMPTY;
                     // TODO: we might have corrupted the ->reply_header
                 }

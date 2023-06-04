@@ -280,14 +280,14 @@ strbuf_t *http_connection(strbuf_t *p, int fd) {
     p = cache_generate_prom(p);
 
     if (!p) {
-        send_str(fd, "HTTP/1.0 500 overflow\n\nbuffer_overflow 1\n");
+        send_str(fd, "HTTP/1.0 500 overflow\r\n\r\nbuffer_overflow 1\r\n");
         return NULL;
     }
 
     // TODO:
     // - cork
     // - retry
-    send_str(fd,"HTTP/1.0 200 OK\n\n");
+    send_str(fd,"HTTP/1.0 200 OK\r\n\r\n");
     // TODO:
     // - loop
     // - timeout
