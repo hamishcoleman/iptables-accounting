@@ -228,8 +228,14 @@ slots_t *slots_malloc(int nr_slots) {
 }
 
 int slots_listen_tcp(slots_t *slots, int port) {
-    // TODO: support multiple listen sockets
-    if (slots->listen[0] != -1) {
+    int listen_nr;
+    for (listen_nr=0; listen_nr < SLOTS_LISTEN; listen_nr++) {
+        if (slots->listen[listen_nr] == -1) {
+            break;
+        }
+    }
+    if (listen_nr == SLOTS_LISTEN) {
+        // All listen slots full
         return -2;
     }
 
@@ -257,7 +263,7 @@ int slots_listen_tcp(slots_t *slots, int port) {
         return -1;
     }
 
-    slots->listen[0] = server;
+    slots->listen[listen_nr] = server;
     return 0;
 }
 
@@ -292,7 +298,7 @@ int slots_fdset(slots_t *slots, fd_set *readers, fd_set *writers) {
     return fdmax;
 }
 
-int slots_accept(slots_t *slots, int listen) {
+int slots_accept(slots_t *slots, int listen_nr) {
     int i;
 
     // TODO: remember previous checked slot and dont start at zero
@@ -307,7 +313,7 @@ int slots_accept(slots_t *slots, int listen) {
         return -2;
     }
 
-    int client = accept(listen, NULL, 0);
+    int client = accept(slots->listen[listen_nr], NULL, 0);
     if (client == -1) {
         return -1;
     }
@@ -344,19 +350,20 @@ int slots_closeidle(slots_t *slots) {
 }
 
 int slots_fdset_loop(slots_t *slots, fd_set *readers, fd_set *writers) {
-    // TODO: multiple listen sockets
-    if (FD_ISSET(slots->listen[0], readers)) {
-        // A new connection
-        int slotnr = slots_accept(slots, slots->listen[0]);
+    for (int i=0; i<SLOTS_LISTEN; i++) {
+        if (FD_ISSET(slots->listen[i], readers)) {
+            // A new connection
+            int slotnr = slots_accept(slots, i);
 
-        switch (slotnr) {
-            case -1:
-            case -2:
-                return slotnr;
+            switch (slotnr) {
+                case -1:
+                case -2:
+                    return slotnr;
 
-            default:
-                // Schedule slot for immediately reading
-                FD_SET(slots->conn[slotnr].fd, readers);
+                default:
+                    // Schedule slot for immediately reading
+                    FD_SET(slots->conn[slotnr].fd, readers);
+            }
         }
     }
 
