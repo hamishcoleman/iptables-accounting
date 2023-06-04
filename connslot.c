@@ -213,6 +213,7 @@ slots_t *slots_malloc(int nr_slots) {
 
     // Set any defaults
     slots->timeout = 60;
+    slots->nr_open = 0;
 
     for (int i=0; i < SLOTS_LISTEN; i++) {
         slots->listen[i] = -1;
