@@ -53,7 +53,7 @@ jobs:
           make lint
 
   coverage:
-    name: Code syntax
+    name: Coverage report
     runs-on: ubuntu-latest
 
     steps:
