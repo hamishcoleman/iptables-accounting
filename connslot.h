@@ -17,13 +17,13 @@ enum conn_state {
 };
 
 typedef struct conn {
-    int fd;
-    enum conn_state state;
     strbuf_t *request;      // Request from remote
     strbuf_t *reply_header; // not shared reply data
     strbuf_t *reply;        // shared reply data (const struct)
-    unsigned int reply_sendpos;
     time_t activity;        // timestamp of last txn
+    int fd;
+    unsigned int reply_sendpos;
+    enum conn_state state;
 } conn_t;
 
 #define SLOTS_LISTEN 2
