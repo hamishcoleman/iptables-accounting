@@ -9,7 +9,7 @@
 
 #include "strbuf.h"
 
-enum conn_state {
+enum __attribute__((__packed__)) conn_state {
     EMPTY,
     READING,
     READY,
