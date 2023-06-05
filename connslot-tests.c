@@ -22,7 +22,7 @@ void connslot_tests() {
     assert(p->listen[1]==-1);
     assert(p->timeout==60);
 
-    free(p);
+    slots_free(p);
 }
 
 int main() {

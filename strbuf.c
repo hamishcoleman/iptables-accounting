@@ -39,8 +39,9 @@ strbuf_t *sb_realloc(strbuf_t *p, size_t size) {
     p = realloc(p, headersize + size);
     if (p) {
         p->capacity = size;
-        if (p->wr_pos > p->capacity) {
-            p->wr_pos = p->capacity;
+        if (p->wr_pos >= p->capacity) {
+            // We truncated
+            p->wr_pos = p->capacity-1;
             p->str[p->wr_pos] = 0;
         }
     }

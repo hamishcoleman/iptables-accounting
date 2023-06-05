@@ -202,6 +202,19 @@ void conn_close(conn_t *conn) {
     conn_zero(conn);
 }
 
+void slots_free(slots_t *slots) {
+    for (int i=0; i < slots->nr_slots; i++) {
+        conn_t *conn = &slots->conn[i];
+        free(conn->request);
+        conn->request = NULL;
+        free(conn->reply_header);
+        conn->reply_header = NULL;
+        free(conn->reply);
+        conn->reply = NULL;
+    }
+    free(slots);
+}
+
 slots_t *slots_malloc(int nr_slots) {
     size_t bytes = sizeof(slots_t) + nr_slots * sizeof(conn_t);
     slots_t *slots = malloc(bytes);
@@ -225,8 +238,8 @@ slots_t *slots_malloc(int nr_slots) {
     }
 
     if (r!=0) {
-        // TODO: free all the successful strbuf mallocs
-        abort();
+        slots_free(slots);
+        slots=NULL;
     }
     return slots;
 }

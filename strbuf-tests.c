@@ -36,16 +36,15 @@ void strbuf_tests() {
     strbuf_t *p2 = sb_realloc(p, 5);
     assert(p2);
     p = p2;
-    assert(p->wr_pos==5);
-    assert(p->str[5]==0);
-    assert(!memcmp(p->str, "abcde", 5));
+    assert(p->wr_pos==4);
+    assert(p->str[4]==0);
+    assert(!memcmp(p->str, "abcd", 4));
 
-    p2 = sb_reappend(p, "abcde", 5);
+    p2 = sb_reappend(p, "abcdef", 6);
     assert(p2);
     p = p2;
     assert(p->wr_pos==10);
-    assert(p->str[10]==0);
-    assert(!memcmp(p->str, "abcdeabcd", 9));
+    assert(!memcmp(p->str, "abcdabcde", 9));
 
     sb_zero(p);
     assert(p->wr_pos==0);
