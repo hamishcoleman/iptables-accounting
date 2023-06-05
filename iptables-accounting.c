@@ -2,13 +2,14 @@
  *
  */
 
-#include <stdlib.h>
-#include <stdio.h>
+#include <arpa/inet.h>
 #include <getopt.h>
+#include <signal.h>
+#include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 #include <sys/socket.h>
 #include <time.h>
-#include <arpa/inet.h>
 #include <unistd.h>
 
 #include "strbuf.h"
@@ -248,91 +249,108 @@ void send_str(int fd, char *s) {
     write(fd,s,strlen(s));
 }
 
-strbuf_t *http_connection(strbuf_t *p, int fd) {
+strbuf_t *http_request(conn_t *conn, strbuf_t *body) {
+    strbuf_t *p = conn->reply_header;
 
-    struct timeval tv;
-    tv.tv_sec = 5;      // FIXME: dont hardcode the timeout
-    tv.tv_usec = 0;
-    if (setsockopt(fd, SOL_SOCKET, SO_RCVTIMEO, &tv, sizeof(tv))<0) {
-        perror("setsockopt");
-        return p;
+    if (strncmp("GET /metrics ",conn->request->str,13) != 0) {
+        p = sb_reprintf(p, "HTTP/1.1 404 Not Found\r\n");
+        p = sb_reprintf(p, "Content-Length: 0\r\n\r\n");
+        conn->reply = NULL;
+        goto out;
     }
 
-    conn_t conn;
-    conn_init(&conn);
-    conn.fd = fd;
+    body = cache_generate_prom(body);
 
-    while (1) {
-        conn_read(&conn);
-
-        // TODO:
-        // - if timeout
-        // - if overflow
-        if (conn.state == CONN_READY) {
-            break;
-        }
+    if (!body) {
+        // We filled up the body strbuf
+        p = sb_reprintf(p, "HTTP/1.1 500 overflow\r\n\r\n");
+        p = sb_reprintf(p, "buffer_overflow 1\n");
+        conn->reply = NULL;
+        goto out;
     }
 
-    if (strncmp("GET /metrics ",conn.request->str,13) != 0) {
-        goto out1;
-    }
+    conn->reply = body;
+    p = sb_reprintf(p, "HTTP/1.1 200 OK\r\n");
+    p = sb_reprintf(p, "Content-Length: %i\r\n\r\n", conn->reply->wr_pos);
 
-    p = cache_generate_prom(p);
-
+out:
     if (!p) {
-        send_str(fd, "HTTP/1.0 500 overflow\r\n\r\nbuffer_overflow 1\r\n");
-        return NULL;
+        // We filled up the reply_header strbuf
+        send_str(conn->fd, "HTTP/1.0 500 \r\n\r\n");
+        conn_close(conn);
+        return body;
     }
 
-    // TODO:
-    // - cork
-    // - retry
-    send_str(fd,"HTTP/1.0 200 OK\r\n\r\n");
-    // TODO:
-    // - loop
-    // - timeout
-    conn.reply = p;
-    conn_write(&conn);
-
-out1:
-    free(conn.request);
-    return p;
+    conn->reply_header = p;
+    conn_write(conn);
+    return body;
 }
 
+#define NR_SLOTS 5
+
 void mode_service(int port, strbuf_t *p) {
-    int server;
-    int client;
-    int on = 1;
-    struct sockaddr_in addr;
-
-    if ((server = socket(AF_INET, SOCK_STREAM, 0)) < 0) {
-        perror("socket");
-        exit(1);
+    slots_t *slots = slots_malloc(NR_SLOTS);
+    if (!slots) {
+        abort();
     }
-    setsockopt(server, SOL_SOCKET, SO_REUSEADDR, &on, sizeof(on));
 
-    memset(&addr, 0, sizeof(addr));
-    addr.sin_family = AF_INET;
-    addr.sin_addr.s_addr = htonl(INADDR_ANY);
-    addr.sin_port = htons(port);
-    if (bind(server, (struct sockaddr *) &addr, sizeof(addr)) < 0) {
-        perror("bind");
+    if (slots_listen_tcp(slots, port)!=0) {
+        perror("slots_listen_tcp");
         exit(1);
     }
 
-    if (listen(server, 3) < 0) {
-        perror("listen");
-        exit(1);
-    }
+    signal(SIGPIPE, SIG_IGN);
 
-    while ((client = accept(server, NULL, 0))) {
-        if (client<0) {
-            perror("accept");
+    int running = 1;
+    while (running) {
+        fd_set readers;
+        fd_set writers;
+        FD_ZERO(&readers);
+        FD_ZERO(&writers);
+        int fdmax = slots_fdset(slots, &readers, &writers);
+
+        struct timeval tv;
+        tv.tv_sec = 5;
+        tv.tv_usec = 0;
+
+        int nr = select(fdmax+1, &readers, &writers, NULL, &tv);
+
+        if (nr == -1) {
+            perror("select");
             exit(1);
         }
+        if (nr == 0) {
+            // Must be a timeout
+            slots_closeidle(slots);
+            continue;
+        }
 
-        p = http_connection(p, client);
-        close(client);
+        // There is at least one event waiting
+        int nr_ready = slots_fdset_loop(slots, &readers, &writers);
+
+        switch (nr_ready) {
+            case -1:
+                perror("accept");
+                exit(1);
+
+            case -2:
+                // No slots! - shouldnt happen, since we gate on nr_open
+                printf("no slots\n");
+                exit(1);
+
+            case 0:
+                continue;
+        }
+
+        for (int i=0; i<slots->nr_slots; i++) {
+            if (slots->conn[i].fd == -1) {
+                continue;
+            }
+
+            if (slots->conn[i].state == CONN_READY) {
+                p = http_request(&slots->conn[i], p);
+            }
+        }
     }
 }
 

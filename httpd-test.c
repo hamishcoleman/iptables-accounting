@@ -119,7 +119,7 @@ void httpd_test(int port) {
                 continue;
             }
 
-            if (slots->conn[i].state == READY) {
+            if (slots->conn[i].state == CONN_READY) {
                 strbuf_t *p;
                 // TODO:
                 // - parse request
@@ -154,7 +154,7 @@ void httpd_test(int port) {
                 } else {
                     // We filled up the reply_header strbuf
                     send_str(slots->conn[i].fd, "HTTP/1.0 500 \r\n\r\n");
-                    slots->conn[i].state = EMPTY;
+                    slots->conn[i].state = CONN_EMPTY;
                     // TODO: we might have corrupted the ->reply_header
                 }
             }
