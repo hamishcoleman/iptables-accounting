@@ -239,7 +239,12 @@ strbuf_t *cache_generate_prom(strbuf_t *p) {
         }
         p = generate_prom(input, p);
         p = sb_reprintf(p, "buffer_timestamp %li\n", now);
-        fclose(input);
+
+        if (inject_now) {
+            fclose(input);
+        } else {
+            pclose(input);
+        }
     }
 
     return p;
