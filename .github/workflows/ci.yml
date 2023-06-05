@@ -52,6 +52,34 @@ jobs:
         run: |
           make lint
 
+  coverage:
+    name: Code syntax
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v2
+        with:
+          fetch-depth: 0
+      - name: Fix Checkout
+        run: |
+          git fetch --force --tags
+
+      - name: Install Dependancies
+        run: |
+          sudo apt-get update
+          make build-dep
+
+      - name: Run the coverage report
+        run: |
+          make COVERAGE=1 all
+          make cover
+
+      - name: Upload gcovr report artifact
+        uses: actions/upload-artifact@v3
+        with:
+          name: coverage
+          path: coverage
+
   clang:
     name: Build and test with clang
     runs-on: ubuntu-latest

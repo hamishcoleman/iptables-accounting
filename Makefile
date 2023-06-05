@@ -6,6 +6,13 @@ all: iptables-accounting
 
 CFLAGS+=-Wall -Wextra -Werror -g
 
+COVERAGEDIR?=coverage
+ifdef COVERAGE
+CFLAGS+=-fprofile-arcs
+CFLAGS+=-ftest-coverage
+LDFLAGS+=--coverage
+endif
+
 ifneq ($(NOANALYZER),1)
 CFLAGS+=-fanalyzer
 endif
@@ -24,6 +31,7 @@ LINT_SHELL+=iptables-accounting-add
 
 BUILD_DEP+=uncrustify
 BUILD_DEP+=yamllint
+BUILD_DEP+=gcovr
 
 CLEAN+=iptables-accounting
 CLEAN+=strbuf-tests
@@ -74,6 +82,11 @@ test.connslot: connslot-tests
 test.unit: iptables-accounting test.input test.expected
 	./iptables-accounting --test <test.input >test.output
 	cmp test.expected test.output
+
+.PHONY: cover
+cover:
+	mkdir -p $(COVERAGEDIR)
+	gcovr -s --html --html-details --output=$(COVERAGEDIR)/index.html
 
 .PHONY: clean
 clean:
