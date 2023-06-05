@@ -10,5 +10,6 @@ jsonrpc.o
 # generated outputs
 iptables-accounting
 strbuf-tests
+connslot-tests
 httpd-test
 test.output

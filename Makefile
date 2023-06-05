@@ -17,7 +17,7 @@ endif
 
 LINT_CCODE+=iptables-accounting.c
 LINT_CCODE+=strbuf.c strbuf.h strbuf-tests.c
-LINT_CCODE+=connslot.c connslot.h
+LINT_CCODE+=connslot.c connslot.h connslot-tests.c
 LINT_CCODE+=httpd-test.c
 LINT_CCODE+=jsonrpc.c jsonrpc.h
 LINT_SHELL+=iptables-accounting-add
@@ -27,11 +27,13 @@ BUILD_DEP+=yamllint
 
 CLEAN+=iptables-accounting
 CLEAN+=strbuf-tests
+CLEAN+=connslot-tests
 CLEAN+=*.o
 
 strbuf.o: strbuf.h
 strbuf-tests: strbuf.o
 connslot.o: connslot.h
+connslot-tests: connslot.o strbuf.o
 httpd-test: connslot.o strbuf.o jsonrpc.o
 
 iptables-accounting: strbuf.o connslot.o
@@ -57,11 +59,16 @@ lint.yaml:
 
 .PHONY: test
 test: test.strbuf
+test: test.connslot
 test: test.unit
 
 .PHONY: test.strbuf
 test.strbuf: strbuf-tests
 	./strbuf-tests
+
+.PHONY: test.connslot
+test.connslot: connslot-tests
+	./connslot-tests
 
 .PHONY: test.unit
 test.unit: iptables-accounting test.input test.expected
