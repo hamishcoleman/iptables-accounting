@@ -19,7 +19,7 @@
 
 void conn_zero(conn_t *conn) {
     conn->fd = -1;
-    conn->state = EMPTY;
+    conn->state = CONN_EMPTY;
     conn->reply = NULL;
     conn->reply_sendpos = 0;
     conn->activity = 0;
@@ -48,7 +48,7 @@ int conn_init(conn_t *conn) {
 }
 
 void conn_read(conn_t *conn) {
-    conn->state = READING;
+    conn->state = CONN_READING;
 
     // If no space available, try increasing our capacity
     if (!sb_avail(conn->request)) {
@@ -63,7 +63,7 @@ void conn_read(conn_t *conn) {
 
     if (size == 0) {
         // TODO: confirm what other times we can get zero on a ready fd
-        conn->state = EMPTY;
+        conn->state = CONN_EMPTY;
         return;
     }
 
@@ -99,7 +99,7 @@ void conn_read(conn_t *conn) {
         if (!p) {
             // We have an end of header, and the header has no content length field
             // so assume there is no body to read
-            conn->state = READY;
+            conn->state = CONN_READY;
             return;
         }
 
@@ -119,7 +119,7 @@ void conn_read(conn_t *conn) {
     }
 
     // Do have enough length
-    conn->state = READY;
+    conn->state = CONN_READY;
     conn->request->rd_pos = 0;
     return;
 }
@@ -130,7 +130,7 @@ ssize_t conn_write(conn_t *conn) {
     unsigned int reply_pos = 0;
     unsigned int end_pos = 0;
 
-    conn->state = SENDING;
+    conn->state = CONN_SENDING;
 
     struct iovec vecs[2];
 
@@ -178,7 +178,7 @@ ssize_t conn_write(conn_t *conn) {
 
     if (conn->reply_sendpos >= end_pos) {
         // We have sent the last bytes of this reply
-        conn->state = EMPTY;
+        conn->state = CONN_EMPTY;
         conn->reply_sendpos = 0;
         sb_zero(conn->reply_header);
         sb_zero(conn->request);
@@ -190,7 +190,7 @@ ssize_t conn_write(conn_t *conn) {
 
 int conn_iswriter(conn_t *conn) {
     switch (conn->state) {
-        case SENDING:
+        case CONN_SENDING:
             return 1;
         default:
             return 0;
@@ -426,12 +426,12 @@ int slots_fdset_loop(slots_t *slots, fd_set *readers, fd_set *writers) {
 
         if (FD_ISSET(slots->conn[i].fd, readers)) {
             conn_read(&slots->conn[i]);
-            // possibly sets state to READY
+            // possibly sets state to CONN_READY
         }
 
-        // After a read, we could be EMPTY or READY
-        // we reach state READY once there is a full request buf
-        if (slots->conn[i].state == READY) {
+        // After a read, we could be CONN_EMPTY or CONN_READY
+        // we reach state CONN_READY once there is a full request buf
+        if (slots->conn[i].state == CONN_READY) {
             nr_ready++;
             // TODO:
             // - parse request
@@ -440,7 +440,7 @@ int slots_fdset_loop(slots_t *slots, fd_set *readers, fd_set *writers) {
 
         // We cannot have got here if it started as an empty slot, so
         // it must have transitioned to empty - close the slot
-        if (slots->conn[i].state == EMPTY) {
+        if (slots->conn[i].state == CONN_EMPTY) {
             slots->nr_open--;
             conn_close(&slots->conn[i]);
             continue;

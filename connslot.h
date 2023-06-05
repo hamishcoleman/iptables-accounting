@@ -10,10 +10,10 @@
 #include "strbuf.h"
 
 enum __attribute__((__packed__)) conn_state {
-    EMPTY,
-    READING,
-    READY,
-    SENDING,
+    CONN_EMPTY,
+    CONN_READING,
+    CONN_READY,
+    CONN_SENDING,
 };
 
 typedef struct conn {

@@ -268,7 +268,7 @@ strbuf_t *http_connection(strbuf_t *p, int fd) {
         // TODO:
         // - if timeout
         // - if overflow
-        if (conn.state == READY) {
+        if (conn.state == CONN_READY) {
             break;
         }
     }
