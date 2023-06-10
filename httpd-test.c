@@ -19,31 +19,31 @@
 #include "connslot.h"
 #include "jsonrpc.h"
 
-strbuf_t *do_jsonrpc(strbuf_t *request, strbuf_t *reply) {
+int do_jsonrpc(strbuf_t *request, strbuf_t **reply) {
     // Dont bother looking at the header fields
     // Assume the body is zero terminated text
 
-    sb_zero(reply);
+    sb_zero(*reply);
 
     char *body = memmem(request->str, sb_len(request), "\r\n\r\n", 4);
     if (!body) {
-        reply = sb_reprintf(reply, "Error: no body\n");
-        return reply;
+        sb_reprintf(reply, "Error: no body\n");
+        return -1;
     }
     body += 4;
 
     jsonrpc_t json;
 
     if (jsonrpc_parse(body, &json) != 0) {
-        reply = sb_reprintf(reply, "Error: parsing json\n");
-        return reply;
+        sb_reprintf(reply, "Error: parsing json\n");
+        return -1;
     }
 
-    reply = sb_reprintf(reply, "dump:\n");
-    reply = sb_reprintf(reply, "method=%s\n", json.method);
-    reply = sb_reprintf(reply, "params=%s\n", json.params);
-    reply = sb_reprintf(reply, "id=%s\n", json.id);
-    return reply;
+    sb_reprintf(reply, "dump:\n");
+    sb_reprintf(reply, "method=%s\n", json.method);
+    sb_reprintf(reply, "params=%s\n", json.params);
+    sb_reprintf(reply, "id=%s\n", json.id);
+    return 0;
 }
 
 void send_str(int fd, char *s) {
@@ -120,7 +120,7 @@ void httpd_test(int port) {
             }
 
             if (slots->conn[i].state == CONN_READY) {
-                strbuf_t *p;
+                strbuf_t **pp;
                 // TODO:
                 // - parse request
 
@@ -130,33 +130,29 @@ void httpd_test(int port) {
                     slots->conn[i].reply = slots->conn[i].request;
                 } else if (strncmp("POST /jsonrpc ",slots->conn[i].request->str,13) == 0) {
                     // TODO: helper to extract http body
-                    p = sb_reappend(slots->conn[i].request, "\0", 1);
-                    slots->conn[i].request = p;
+                    sb_reappend(&slots->conn[i].request, "\0", 1);
 
-                    reply = do_jsonrpc(slots->conn[i].request, reply);
+                    do_jsonrpc(slots->conn[i].request, &reply);
                     slots->conn[i].reply = reply;
                 } else {
                     slots->conn[i].reply = reply;
                 }
 
-                p = slots->conn[i].reply_header;
-                p = sb_reprintf(p, "HTTP/1.1 200 OK\r\n");
-                p = sb_reprintf(p, "x-slot: %i\r\n", i);
-                p = sb_reprintf(p, "x-open: %i\r\n", slots->nr_open);
-                p = sb_reprintf(p, "Content-Length: %i\r\n\r\n", sb_len(slots->conn[i].reply));
+                pp = &slots->conn[i].reply_header;
+                sb_reprintf(pp, "HTTP/1.1 200 OK\r\n");
+                sb_reprintf(pp, "x-slot: %i\r\n", i);
+                sb_reprintf(pp, "x-open: %i\r\n", slots->nr_open);
+                sb_reprintf(pp, "Content-Length: %lu\r\n\r\n", sb_len(slots->conn[i].reply));
 
-                if (p) {
-                    slots->conn[i].reply_header = p;
+                // TODO: detect reply_header realloc failure
+                //   // We filled up the reply_header strbuf
+                //   send_str(slots->conn[i].fd, "HTTP/1.0 500 \r\n\r\n");
+                //   slots->conn[i].state = CONN_EMPTY;
+                //   // TODO: we might have corrupted the ->reply_header ?
+                //   continue;
 
-                    // Try to immediately start sending the reply
-                    conn_write(&slots->conn[i]);
-
-                } else {
-                    // We filled up the reply_header strbuf
-                    send_str(slots->conn[i].fd, "HTTP/1.0 500 \r\n\r\n");
-                    slots->conn[i].state = CONN_EMPTY;
-                    // TODO: we might have corrupted the ->reply_header
-                }
+                // Try to immediately start sending the reply
+                conn_write(&slots->conn[i]);
             }
         }
     }

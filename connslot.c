@@ -52,11 +52,10 @@ void conn_read(conn_t *conn) {
 
     // If no space available, try increasing our capacity
     if (!sb_avail(conn->request)) {
-        strbuf_t *new = sb_realloc(conn->request, conn->request->capacity + 16);
-        if (!new) {
+        strbuf_t *p = sb_realloc(&conn->request, conn->request->capacity + 16);
+        if (!p) {
             abort(); // FIXME: do something smarter?
         }
-        conn->request = new;
     }
 
     ssize_t size = sb_read(conn->fd, conn->request);
@@ -136,8 +135,8 @@ ssize_t conn_write(conn_t *conn) {
 
     if (conn->reply_header) {
         end_pos += sb_len(conn->reply_header);
-        if (conn->reply_sendpos < conn->reply_header->wr_pos) {
-            size_t size = conn->reply_header->wr_pos - conn->reply_sendpos;
+        if (conn->reply_sendpos < sb_len(conn->reply_header)) {
+            size_t size = sb_len(conn->reply_header) - conn->reply_sendpos;
             vecs[nr].iov_base = &conn->reply_header->str[conn->reply_sendpos];
             vecs[nr].iov_len = size;
             nr++;

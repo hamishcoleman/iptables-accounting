@@ -30,8 +30,9 @@ strbuf_t *sb_malloc(size_t size) {
     return p;
 }
 
-strbuf_t *sb_realloc(strbuf_t *p, size_t size) {
+strbuf_t *sb_realloc(strbuf_t **pp, size_t size) {
     size_t headersize = sizeof(strbuf_t);
+    strbuf_t *p = *pp;
     if (size > p->capacity_max) {
         return NULL;
     }
@@ -44,6 +45,9 @@ strbuf_t *sb_realloc(strbuf_t *p, size_t size) {
             p->wr_pos = p->capacity-1;
             p->str[p->wr_pos] = 0;
         }
+
+        // update the original pointer
+        *pp = p;
     }
     return p;
 }
@@ -57,7 +61,7 @@ size_t sb_avail(strbuf_t *p) {
 }
 
 size_t sb_append(strbuf_t *p, void *buf, size_t bufsize) {
-    if ((p->capacity - p->wr_pos) < bufsize) {
+    if (sb_avail(p) < bufsize) {
         return -1;
     }
     memcpy(&p->str[p->wr_pos], buf, bufsize);
@@ -65,10 +69,11 @@ size_t sb_append(strbuf_t *p, void *buf, size_t bufsize) {
     return p->wr_pos;
 }
 
-strbuf_t *sb_reappend(strbuf_t *p, void *buf, size_t bufsize) {
+strbuf_t *sb_reappend(strbuf_t **pp, void *buf, size_t bufsize) {
+    strbuf_t *p = *pp;
     size_t needed = p->wr_pos + bufsize;
     if (needed > p->capacity) {
-        p = sb_realloc(p, needed);
+        p = sb_realloc(pp, needed);
         if (!p) {
             return NULL;
         }
@@ -101,12 +106,13 @@ size_t sb_printf(strbuf_t *p, const char *format, ...) {
     va_end(ap);
 }
 
-strbuf_t *sb_reprintf(strbuf_t *p, const char *format, ...) {
+size_t sb_reprintf(strbuf_t **pp, const char *format, ...) {
     va_list ap;
+    strbuf_t *p = *pp;
     size_t size;
 
     if (!p) {
-        return NULL;
+        return -1;
     }
 
     int loop = 0;
@@ -124,13 +130,14 @@ strbuf_t *sb_reprintf(strbuf_t *p, const char *format, ...) {
         if (loop) {
             // Something went wrong, we already passed through the realloc
             // and still dont have enough buffer space for the printf
-            return NULL;
+            return -1;
         }
 
-        p = sb_realloc(p, size + 1);
+        p = sb_realloc(pp, size + 1);
         if (!p) {
-            return NULL;
+            return -1;
         }
+        p = *pp;
         loop = 1;
     }
 }

@@ -29,15 +29,15 @@ typedef struct strbuf {
 
 void sb_zero(strbuf_t *);
 strbuf_t *sb_malloc(size_t) __attribute__ ((malloc));
-strbuf_t *sb_realloc(strbuf_t *, size_t);
+strbuf_t *sb_realloc(strbuf_t **, size_t);
 size_t sb_len(strbuf_t *);
 size_t sb_avail(strbuf_t *);
 size_t sb_append(strbuf_t *, void *, size_t);
-strbuf_t *sb_reappend(strbuf_t *p, void *, size_t);
+strbuf_t *sb_reappend(strbuf_t **, void *, size_t);
 size_t sb_vprintf(strbuf_t *, const char *, va_list);
 size_t sb_printf(strbuf_t *, const char *, ...)
 __attribute__ ((format (printf, 2, 3)));
-strbuf_t *sb_reprintf(strbuf_t *, const char *, ...)
+size_t sb_reprintf(strbuf_t **, const char *, ...)
 __attribute__ ((format (printf, 2, 3)));
 ssize_t sb_read(int, strbuf_t *);
 ssize_t sb_write(int, strbuf_t *, int, ssize_t);

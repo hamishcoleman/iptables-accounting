@@ -33,16 +33,14 @@ void strbuf_tests() {
     assert(r==-1);
     assert(p->wr_pos==8);
 
-    strbuf_t *p2 = sb_realloc(p, 5);
+    strbuf_t *p2 = sb_realloc(&p, 5);
     assert(p2);
-    p = p2;
     assert(p->wr_pos==4);
     assert(p->str[4]==0);
     assert(!memcmp(p->str, "abcd", 4));
 
-    p2 = sb_reappend(p, "abcdef", 6);
+    p2 = sb_reappend(&p, "abcdef", 6);
     assert(p2);
-    p = p2;
     assert(p->wr_pos==10);
     assert(!memcmp(p->str, "abcdabcde", 9));
 
@@ -73,12 +71,14 @@ void strbuf_tests() {
     assert(!strncmp(p->str, "0x0a0x14Z", 10));
 
     // The max capacity is still set to the size at malloc
-    strbuf_t *np = sb_reprintf(p, "%05i", 1024);
-    assert(!np);
+    size_t n = sb_reprintf(&p, "%05i", 1024);
+    assert((long int)n==-1);
+    assert(p);
     assert(p->wr_pos==9);
 
     p->capacity_max = 1000;
-    p = sb_reprintf(p, "%05i", 1024);
+    n = sb_reprintf(&p, "%05i", 1024);
+    assert(n==14);
     assert(p);
     assert(p->wr_pos==14);
     assert(p->capacity==15);
