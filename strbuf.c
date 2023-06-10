@@ -118,7 +118,7 @@ strbuf_t *sb_reprintf(strbuf_t *p, const char *format, ...) {
 
         if (size < p->capacity) {
             // The new data fit in the buffer
-            return p;
+            return sb_len(p);
         }
 
         if (loop) {

@@ -25,7 +25,7 @@ strbuf_t *do_jsonrpc(strbuf_t *request, strbuf_t *reply) {
 
     sb_zero(reply);
 
-    char *body = memmem(request->str, request->wr_pos, "\r\n\r\n", 4);
+    char *body = memmem(request->str, sb_len(request), "\r\n\r\n", 4);
     if (!body) {
         reply = sb_reprintf(reply, "Error: no body\n");
         return reply;
@@ -143,7 +143,7 @@ void httpd_test(int port) {
                 p = sb_reprintf(p, "HTTP/1.1 200 OK\r\n");
                 p = sb_reprintf(p, "x-slot: %i\r\n", i);
                 p = sb_reprintf(p, "x-open: %i\r\n", slots->nr_open);
-                p = sb_reprintf(p, "Content-Length: %i\r\n\r\n", slots->conn[i].reply->wr_pos);
+                p = sb_reprintf(p, "Content-Length: %i\r\n\r\n", sb_len(slots->conn[i].reply));
 
                 if (p) {
                     slots->conn[i].reply_header = p;

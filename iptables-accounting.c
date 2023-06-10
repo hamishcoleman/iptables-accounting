@@ -207,7 +207,7 @@ strbuf_t *generate_prom(FILE *input, strbuf_t *p) {
 
     p = sb_reprintf(p,"iptables_read_lines %i\n", lines);
     p = sb_reprintf(p,"buffer_capacity_bytes %i\n", p->capacity);
-    p = sb_reprintf(p,"buffer_used_bytes %i\n", p->wr_pos);
+    p = sb_reprintf(p,"buffer_used_bytes %lu\n", sb_len(p));
 
     return p;
 }
@@ -276,7 +276,7 @@ strbuf_t *http_request(conn_t *conn, strbuf_t *body) {
 
     conn->reply = body;
     p = sb_reprintf(p, "HTTP/1.1 200 OK\r\n");
-    p = sb_reprintf(p, "Content-Length: %i\r\n\r\n", conn->reply->wr_pos);
+    p = sb_reprintf(p, "Content-Length: %lu\r\n\r\n", sb_len(conn->reply));
 
 out:
     if (!p) {

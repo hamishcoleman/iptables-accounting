@@ -71,7 +71,7 @@ void conn_read(conn_t *conn) {
 
     // case protocol==HTTP
 
-    if (conn->request->wr_pos<4) {
+    if (sb_len(conn->request)<4) {
         // Not enough bytes to match the end of header check
         return;
     }
@@ -80,7 +80,7 @@ void conn_read(conn_t *conn) {
     unsigned int expected_length = conn->request->rd_pos;
 
     if (expected_length == 0) {
-        char *p = memmem(conn->request->str, conn->request->wr_pos, "\r\n\r\n", 4);
+        char *p = memmem(conn->request->str, sb_len(conn->request), "\r\n\r\n", 4);
         if (!p) {
             // As yet, we dont have an entire header
             return;
@@ -91,7 +91,7 @@ void conn_read(conn_t *conn) {
         // Determine if we need to read a body
         p = memmem(
                 conn->request->str,
-                conn->request->wr_pos,
+                sb_len(conn->request),
                 "Content-Length:",
                 15
         );
@@ -113,7 +113,7 @@ void conn_read(conn_t *conn) {
     // cache the calcaulated total length in the conn
     conn->request->rd_pos = expected_length;
 
-    if (conn->request->wr_pos < expected_length) {
+    if (sb_len(conn->request) < expected_length) {
         // Dont have enough length
         return;
     }
@@ -135,28 +135,28 @@ ssize_t conn_write(conn_t *conn) {
     struct iovec vecs[2];
 
     if (conn->reply_header) {
-        end_pos += conn->reply_header->wr_pos;
+        end_pos += sb_len(conn->reply_header);
         if (conn->reply_sendpos < conn->reply_header->wr_pos) {
             size_t size = conn->reply_header->wr_pos - conn->reply_sendpos;
             vecs[nr].iov_base = &conn->reply_header->str[conn->reply_sendpos];
             vecs[nr].iov_len = size;
             nr++;
         } else {
-            reply_pos = conn->reply_sendpos - conn->reply_header->wr_pos;
+            reply_pos = conn->reply_sendpos - sb_len(conn->reply_header);
         }
     }
 
     if (conn->reply) {
-        end_pos += conn->reply->wr_pos;
+        end_pos += sb_len(conn->reply);
         vecs[nr].iov_base = &conn->reply->str[reply_pos];
-        vecs[nr].iov_len = conn->reply->wr_pos - reply_pos;
+        vecs[nr].iov_len = sb_len(conn->reply) - reply_pos;
         nr++;
     }
 
     sent = writev(conn->fd, &vecs[0], nr);
 
 #if NOVEC
-    if (conn->reply_sendpos < conn->reply_header->wr_pos) {
+    if (conn->reply_sendpos < sb_len(conn->reply_header)) {
         sent = sb_write(
                 conn->fd,
                 conn->reply_header,
@@ -167,11 +167,11 @@ ssize_t conn_write(conn_t *conn) {
         sent = sb_write(
                 conn->fd,
                 conn->reply,
-                conn->reply_sendpos - conn->reply_header->wr_pos,
+                conn->reply_sendpos - sb_len(conn->reply_header),
                 -1
         );
     }
-    unsigned int end_pos = conn->reply_header->wr_pos + conn->reply->wr_pos;
+    unsigned int end_pos = sb_len(conn->reply_header) + sb_len(conn->reply);
 #endif
 
     conn->reply_sendpos += sent;
