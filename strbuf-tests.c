@@ -30,8 +30,9 @@ void strbuf_tests() {
     assert(!memcmp(p->str, "abcdefgh", 8));
 
     r = sb_append(p, "abcd", 4);
-    assert(r==-1);
-    assert(p->wr_pos==8);
+    assert(r==10);
+    assert(sb_full(p));
+    assert(!memcmp(p->str, "abcdefghab", 10));
 
     strbuf_t *p2 = sb_realloc(&p, 5);
     assert(p2);

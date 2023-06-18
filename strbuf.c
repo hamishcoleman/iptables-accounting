@@ -6,6 +6,7 @@
  */
 
 #include <stdarg.h>
+#include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -34,7 +35,7 @@ strbuf_t *sb_realloc(strbuf_t **pp, size_t size) {
     size_t headersize = sizeof(strbuf_t);
     strbuf_t *p = *pp;
     if (size > p->capacity_max) {
-        return NULL;
+        size = p->capacity_max;
     }
 
     p = realloc(p, headersize + size);
@@ -56,14 +57,26 @@ size_t sb_len(strbuf_t *p) {
     return p->wr_pos;
 }
 
-size_t sb_avail(strbuf_t *p) {
+ssize_t sb_avail(strbuf_t *p) {
     return p->capacity - p->wr_pos;
 }
 
-size_t sb_append(strbuf_t *p, void *buf, size_t bufsize) {
-    if (sb_avail(p) < bufsize) {
+bool sb_full(strbuf_t *p) {
+    return sb_avail(p) == 0;
+}
+
+size_t sb_append(strbuf_t *p, void *buf, ssize_t bufsize) {
+    ssize_t avail = sb_avail(p);
+    if (avail <= 0) {
+        // Cannot append to a full buffer
         return -1;
     }
+
+    if (avail < bufsize) {
+        // Truncate the new data to fit
+        bufsize = avail;
+    }
+
     memcpy(&p->str[p->wr_pos], buf, bufsize);
     p->wr_pos += bufsize;
     return p->wr_pos;

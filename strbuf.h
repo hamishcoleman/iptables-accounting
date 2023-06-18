@@ -9,6 +9,7 @@
 #define STRBUF_H 1
 
 #include <stdarg.h>
+#include <stdbool.h>
 
 typedef struct strbuf {
     unsigned int capacity;
@@ -31,8 +32,9 @@ void sb_zero(strbuf_t *);
 strbuf_t *sb_malloc(size_t) __attribute__ ((malloc));
 strbuf_t *sb_realloc(strbuf_t **, size_t);
 size_t sb_len(strbuf_t *);
-size_t sb_avail(strbuf_t *);
-size_t sb_append(strbuf_t *, void *, size_t);
+ssize_t sb_avail(strbuf_t *);
+bool sb_full(strbuf_t *);
+size_t sb_append(strbuf_t *, void *, ssize_t);
 strbuf_t *sb_reappend(strbuf_t **, void *, size_t);
 size_t sb_vprintf(strbuf_t *, const char *, va_list);
 size_t sb_printf(strbuf_t *, const char *, ...)
