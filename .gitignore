@@ -8,14 +8,14 @@
 coverage
 
 # generated intermediates
-strbuf.o
 connslot.o
 jsonrpc.o
+strbuf.o
 
 # generated outputs
+connslot-tests
+doxygen
+httpd-test
 iptables-accounting
 strbuf-tests
-connslot-tests
-httpd-test
 test.output
-doxygen
