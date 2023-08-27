@@ -1,4 +1,4 @@
-/*
+/** @file
  * Internal interface definitions for the strbuf abstraction
  *
  * Copyright (C) 2023 Hamish Coleman
@@ -11,16 +11,25 @@
 #include <stdarg.h>
 #include <stdbool.h>
 
+/**
+ * The strbuf type
+ *
+ */
 typedef struct strbuf {
-    unsigned int capacity;
-    unsigned int capacity_max;  // When auto reallocing, what is the largest
-    unsigned int wr_pos;        // str[] append position (arriving data)
-    unsigned int rd_pos;        // str[] read position (processing data)
+    unsigned int capacity;      //!< The current storage capacity of str[]
+    unsigned int capacity_max;  //!< The largest automatic allowed capacity
+    unsigned int wr_pos;        //!< str[] append position (arriving data)
+    unsigned int rd_pos;        //!< str[] read position (processing data)
     char str[];
 } strbuf_t;
 
-// Initialise the strbuf pointer buf to point at the storage area p
-// p must be a known sized object
+/**
+ * Initialise a memory area to become a strbuf.
+ *
+ * @param buf is a strbuf pointer
+ * @param p is a the pre-defined memory that we will use for the
+ * strbuf object (must be a known sized object)
+ */
 #define STRBUF_INIT(buf,p) do { \
         buf = (void *)p; \
         buf->capacity = sizeof(p) - sizeof(strbuf_t); \

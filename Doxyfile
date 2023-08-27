@@ -1,0 +1,10 @@
+# Doxyfile 1.9.1
+
+DOXYFILE_ENCODING      = UTF-8
+PROJECT_NAME           = "iptables-accounting"
+PROJECT_BRIEF          = linux ip traffic accounting exporter
+JAVADOC_AUTOBRIEF      = YES
+OUTPUT_DIRECTORY       = doxygen
+OPTIMIZE_OUTPUT_FOR_C  = YES
+GENERATE_LATEX         = NO
+# EXTRACT_ALL            = YES

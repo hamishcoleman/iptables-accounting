@@ -32,6 +32,7 @@ LINT_SHELL+=iptables-accounting-add
 BUILD_DEP+=uncrustify
 BUILD_DEP+=yamllint
 BUILD_DEP+=gcovr
+BUILD_DEP+=doxygen
 
 CLEAN+=iptables-accounting
 CLEAN+=strbuf-tests

@@ -18,3 +18,4 @@ strbuf-tests
 connslot-tests
 httpd-test
 test.output
+doxygen
