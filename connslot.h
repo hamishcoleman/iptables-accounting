@@ -1,4 +1,5 @@
-/*
+/** @file
+ * Internal interface definitions for the connslot abstraction
  *
  * Copyright (C) 2023 Hamish Coleman
  * SPDX-License-Identifier: GPL-2.0-only

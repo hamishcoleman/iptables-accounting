@@ -1,5 +1,8 @@
-/*
+/** @file
+ * A connection slot abstraction for network services
  *
+ * Copyright (C) 2023 Hamish Coleman
+ * SPDX-License-Identifier: GPL-2.0-only
  */
 
 #define _GNU_SOURCE
@@ -90,7 +93,7 @@ void conn_read(conn_t *conn) {
         // Determine if we need to read a body
         p = memmem(
                 conn->request->str,
-                sb_len(conn->request),
+                body_pos,
                 "Content-Length:",
                 15
         );
@@ -109,7 +112,7 @@ void conn_read(conn_t *conn) {
 
     // By this point we must have an expected_length
 
-    // cache the calcaulated total length in the conn
+    // cache the calculated total length in the conn
     conn->request->rd_pos = expected_length;
 
     if (sb_len(conn->request) < expected_length) {
@@ -208,6 +211,7 @@ void slots_free(slots_t *slots) {
         conn->request = NULL;
         free(conn->reply_header);
         conn->reply_header = NULL;
+        // TODO: the application usually owns conn->reply, should we free?
         free(conn->reply);
         conn->reply = NULL;
     }
@@ -424,6 +428,7 @@ int slots_fdset_loop(slots_t *slots, fd_set *readers, fd_set *writers) {
 
                 default:
                     // Schedule slot for immediately reading
+                    // TODO: if protocol == http
                     FD_SET(slots->conn[slotnr].fd, readers);
             }
         }
